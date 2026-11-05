@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "./animations.css";
+
+@theme {
+  /* Background colors */
+  --color-bg: #0B0D10;
+  --color-surface: #12161B;
+  --color-surface-raised: #1A1F26;
+  --color-line: #262C35;
+
+  /* Text colors */
+  --color-text: #E6E9EE;
+  --color-text-muted: #8B94A1;
+
+  /* Board colors */
+  --color-square-light: #3A4250;
+  --color-square-dark: #232A34;
+
+  /* Status colors */
+  --color-danger: #E5484D;
+
+  /* Card colors */
+  --color-card-gold: #E5B53B;
+  --color-card-silver: #AEB6C2;
+  --color-card-green: #3FB97A;
+  --color-card-blue: #4C8DF6;
+  --color-card-bronze: #B87333;
+  --color-card-purple: #9A6BFF;
+
+  /* Fonts */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Border radius */
+  --radius-lg: 12px;
+  --radius-md: 8px;
+}
+
+/* Base styles */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
