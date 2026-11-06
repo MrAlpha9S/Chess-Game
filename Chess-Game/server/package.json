@@ -1,0 +1,30 @@
+{
+  "name": "chess-game-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "REST API that validates chess moves and writes the authoritative game state to Firebase Realtime Database.",
+  "license": "GPL-3.0-or-later",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:types": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "node --watch dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@chess-game/chess-engine": "*",
+    "@chess-game/game-service": "*",
+    "express": "^5.3.0",
+    "firebase-admin": "^14.5.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "~6.0.2",
+    "vitest": "^5.1.0"
+  }
+}

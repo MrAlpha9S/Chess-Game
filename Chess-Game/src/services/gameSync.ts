@@ -149,6 +149,31 @@ export async function requestGameCreation(matchId: string): Promise<void> {
   await createGame({ matchId });
 }
 
+/**
+ * Ask the server to record the game result.
+ *
+ * Result-determining writes are server-only (the rules block clients from
+ * writing the game state), so this goes through the Cloud Function rather
+ * than a direct RTDB write.
+ */
+export async function endGame(
+  matchId: string,
+  reason: 'resignation' | 'draw',
+): Promise<SubmitMoveResult> {
+  const functions = getFunctions();
+  const resign = httpsCallable<
+    { matchId: string; reason: string },
+    { ok: boolean; winner?: 'white' | 'black' | 'draw'; reason?: string }
+  >(functions, 'resign');
+  try {
+    const result = await resign({ matchId, reason });
+    return { ...result.data, ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not reach the server.';
+    return { ok: false, error: message };
+  }
+}
+
 // Game Sync Service
 class GameSyncService {
   private gameRef: DatabaseReference | null = null;
@@ -223,25 +248,19 @@ class GameSyncService {
     });
   }
 
-  // End game
-  async endGame(matchId: string, winner: 'white' | 'black' | 'draw'): Promise<void> {
-    console.log(`[GameSyncService ${this.debugId}] endGame:`, { matchId, winner });
-
-    await update(ref(rtdb, `matches/${matchId}`), {
-      status: 'finished',
-      winner,
-    });
-  }
-
-  // Resign
+  /**
+   * End the game by resignation.
+   *
+   * The rules block clients from writing the result, so this asks the server
+   * to record it.
+   */
   async resign(matchId: string, userId: string): Promise<void> {
     console.log(`[GameSyncService ${this.debugId}] resign:`, { matchId, userId });
 
-    const gameData = await this.getGame(matchId);
-    if (!gameData) return;
-
-    const winner = gameData.currentTurn === 'white' ? 'black' : 'white';
-    await this.endGame(matchId, winner);
+    const result = await endGame(matchId, 'resignation');
+    if (!result.ok) {
+      console.error(`[GameSyncService ${this.debugId}] resign failed:`, result.error);
+    }
   }
 
   // Draw offer
@@ -253,7 +272,7 @@ class GameSyncService {
 
   // Accept draw
   async acceptDraw(matchId: string): Promise<void> {
-    await this.endGame(matchId, 'draw');
+    await endGame(matchId, 'draw');
   }
 
   // Get game state

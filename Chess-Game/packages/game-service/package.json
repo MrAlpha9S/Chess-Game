@@ -1,0 +1,30 @@
+{
+  "name": "@chess-game/game-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared game validation logic, used by both the Express API and Cloud Functions.",
+  "license": "GPL-3.0-or-later",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@chess-game/chess-engine": "*"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vitest": "^5.1.0"
+  }
+}

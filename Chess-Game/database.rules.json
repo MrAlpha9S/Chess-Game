@@ -5,17 +5,41 @@
 
     "matches": {
       "$matchId": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        ".read": "auth != null && (root.child('matches').child($matchId).child('players').child('0').child('userId').val() === auth.uid || root.child('matches').child($matchId).child('players').child('1').child('userId').val() === auth.uid)",
+
+        ".write": "auth != null && !data.exists() && (newData.child('players').child('0').child('userId').val() === auth.uid || newData.child('players').child('1').child('userId').val() === auth.uid)",
+
+        "players": {
+          "$playerId": {
+            ".read": "auth != null",
+            ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid)"
+          }
+        },
+
+        "status": {
+          ".write": "auth != null && newData.val() === 'cancelled'"
+        },
 
         "game": {
           ".read": "auth != null",
-          ".write": false
+          ".validate": false
         },
 
         "moves": {
           ".read": "auth != null",
-          ".write": false
+          ".validate": false
+        },
+
+        "winner": {
+          ".validate": false
+        },
+
+        "board": {
+          ".validate": false
+        },
+
+        "currentTurn": {
+          ".validate": false
         }
       }
     },
@@ -24,18 +48,36 @@
       "queue": {
         "$entryId": {
           ".read": "auth != null && data.child('userId').val() === auth.uid",
-          ".write": "auth != null && (!data.exists() && newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
+          ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid)"
         }
       },
+
       "rooms": {
         "$roomCode": {
           ".read": "auth != null",
-          ".write": "auth != null",
+
+          ".write": "auth != null && !data.exists() && newData.child('hostId').val() === auth.uid",
 
           "players": {
             "$playerId": {
-              ".write": "auth != null && $playerId === auth.uid"
+              ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid)"
             }
+          },
+
+          "status": {
+            ".write": "auth != null && (newData.val() === 'ready' || newData.val() === 'playing' || newData.val() === 'cancelled')"
+          },
+
+          "board": {
+            ".validate": false
+          },
+
+          "currentTurn": {
+            ".validate": false
+          },
+
+          "moves": {
+            ".validate": false
           }
         }
       }

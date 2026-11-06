@@ -32,4 +32,8 @@ dist-ssr
 .firebase
 dist
 docs
-functions
+
+# Cloud Functions build artefacts (the source itself is tracked)
+functions/lib
+functions/node_modules
+functions/engine

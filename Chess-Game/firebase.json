@@ -19,5 +19,23 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs22"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9199
+    },
+    "database": {
+      "port": 9100
+    },
+    "functions": {
+      "port": 5101
+    },
+    "hub": {
+      "port": 4500
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
   }
 }
