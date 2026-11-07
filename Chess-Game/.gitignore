@@ -31,5 +31,3 @@ dist-ssr
 .claude
 .firebase
 dist
-docs
-functions
