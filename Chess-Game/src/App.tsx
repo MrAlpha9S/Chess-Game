@@ -1,21 +1,17 @@
 import './styles/theme.css';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { useGameStore } from './stores/gameStore';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { LobbyScreen } from './features/lobby/LobbyScreen';
-import { CardCollectionScreen } from './features/cards/CardCollectionScreen';
-import { MatchmakingScreen } from './features/matchmaking/MatchmakingScreen';
-import { PreparationScreen } from './features/preparation/PreparationScreen';
 import { MatchScreen } from './features/match/MatchScreen';
-import { ResultScreenWrapper } from './features/result/ResultScreen';
+import { ResultScreen } from './features/result/ResultScreen';
 import { CreateRoomScreen } from './features/room/CreateRoomScreen';
 import { JoinRoomScreen } from './features/room/JoinRoomScreen';
 import { WaitingRoomScreen } from './features/room/WaitingRoomScreen';
-import { RoomMatchScreen } from './features/room/RoomMatchScreen';
 import { Loader2 } from 'lucide-react';
 
-// Loading screen component
+/** Shown while the auth state is being restored. */
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -27,7 +23,7 @@ function LoadingScreen() {
   );
 }
 
-// Protected route wrapper
+/** A route that requires a signed-in player. */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
@@ -42,7 +38,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Auth route - redirect to lobby if already logged in
+/** A route that only makes sense while signed out. */
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
@@ -57,52 +53,27 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Screen router using URL params
-function ScreenRouter() {
-  const { currentScreen } = useGameStore();
-
-  // Sync URL with game state for backward compatibility
-  const getPath = () => {
-    switch (currentScreen) {
-      case 'lobby': return '/lobby';
-      case 'card-collection': return '/cards';
-      case 'matchmaking': return '/matchmaking';
-      case 'preparation': return '/preparation';
-      case 'match': return '/match';
-      case 'result': return '/result';
-      default: return '/login';
-    }
-  };
-
-  return (
-    <Navigate to={getPath()} replace />
-  );
-}
-
-// Main routes component
 function AppRoutes() {
   return (
     <Routes>
-      {/* Auth routes */}
+      {/* Auth */}
       <Route path="/login" element={<AuthRoute><LoginScreen /></AuthRoute>} />
-      <Route path="/" element={<ScreenRouter />} />
 
-      {/* Protected routes */}
-      <Route path="/lobby" element={<ProtectedRoute><LobbyScreen /></ProtectedRoute>} />
-      <Route path="/cards" element={<ProtectedRoute><CardCollectionScreen /></ProtectedRoute>} />
-      <Route path="/matchmaking" element={<ProtectedRoute><MatchmakingScreen /></ProtectedRoute>} />
-      <Route path="/preparation" element={<ProtectedRoute><PreparationScreen /></ProtectedRoute>} />
-      <Route path="/match" element={<ProtectedRoute><MatchScreen /></ProtectedRoute>} />
-      <Route path="/result" element={<ProtectedRoute><ResultScreenWrapper /></ProtectedRoute>} />
-
-      {/* Room routes */}
+      {/* Rooms */}
       <Route path="/create-room" element={<ProtectedRoute><CreateRoomScreen /></ProtectedRoute>} />
       <Route path="/join-room" element={<ProtectedRoute><JoinRoomScreen /></ProtectedRoute>} />
-      <Route path="/room" element={<ProtectedRoute><WaitingRoomScreen /></ProtectedRoute>} />
-      <Route path="/room/match" element={<ProtectedRoute><RoomMatchScreen /></ProtectedRoute>} />
+      <Route path="/room/:roomId" element={<ProtectedRoute><WaitingRoomScreen /></ProtectedRoute>} />
+
+      {/* Game */}
+      <Route path="/match/:roomId" element={<ProtectedRoute><MatchScreen /></ProtectedRoute>} />
+      <Route path="/result" element={<ProtectedRoute><ResultScreen /></ProtectedRoute>} />
+
+      {/* Lobby */}
+      <Route path="/lobby" element={<ProtectedRoute><LobbyScreen /></ProtectedRoute>} />
+      <Route path="/" element={<Navigate to="/lobby" replace />} />
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );
 }

@@ -1,33 +1,55 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ClockDisplayProps {
+  /** The time left on the clock, in seconds. */
   initialTime: number;
+  /** True when this clock is the one running. */
   isRunning: boolean;
+  /** The time added after each move, in seconds. */
   increment?: number;
+  /** Called when the clock reaches zero. */
   onTimeUp?: () => void;
 }
 
+/**
+ * A clock display for a single side.
+ *
+ * The remaining time comes from the room and is counted down locally, so the
+ * display is smooth without a write per frame. The authoritative value is
+ * pushed back into `initialTime` by whoever owns the clock.
+ */
 export function ClockDisplay({
   initialTime,
   isRunning,
-  increment: _increment = 0,
+  increment = 0,
   onTimeUp,
 }: ClockDisplayProps) {
-  const [timeLeft, setTimeLeft] = useState(initialTime);
-  const lastUpdateRef = useRef(Date.now());
+  // The countdown state, together with the stored value it was derived from.
+  // A new stored value resets the countdown; the comparison happens during
+  // render so that no effect has to set state.
+  const [clock, setClock] = useState({ storedTime: initialTime, timeLeft: initialTime });
 
-  // Format time as MM:SS
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  if (clock.storedTime !== initialTime) {
+    setClock({ storedTime: initialTime, timeLeft: initialTime });
+  }
 
-  // Update timer
+  const timeLeft = clock.storedTime === initialTime ? clock.timeLeft : initialTime;
+
+  const lastUpdateRef = useRef(0);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    firedRef.current = false;
+  }, [initialTime]);
+
   useEffect(() => {
     if (!isRunning) {
       lastUpdateRef.current = Date.now();
       return;
+    }
+
+    if (lastUpdateRef.current === 0) {
+      lastUpdateRef.current = Date.now();
     }
 
     const interval = setInterval(() => {
@@ -35,12 +57,13 @@ export function ClockDisplay({
       const delta = (now - lastUpdateRef.current) / 1000;
       lastUpdateRef.current = now;
 
-      setTimeLeft((prev) => {
-        const newTime = Math.max(0, prev - delta);
-        if (newTime <= 0 && onTimeUp) {
-          onTimeUp();
+      setClock((current) => {
+        const next = Math.max(0, current.timeLeft - delta);
+        if (next <= 0 && !firedRef.current) {
+          firedRef.current = true;
+          onTimeUp?.();
         }
-        return newTime;
+        return { ...current, timeLeft: next };
       });
     }, 100);
 
@@ -49,6 +72,9 @@ export function ClockDisplay({
 
   const isLow = timeLeft <= 10;
   const isVeryLow = timeLeft <= 5;
+
+  // The increment is added once the clock stops, so it is not counted down.
+  const displayed = isRunning ? timeLeft : timeLeft + increment;
 
   return (
     <div
@@ -60,10 +86,18 @@ export function ClockDisplay({
         ${isVeryLow ? 'text-danger animate-pulse' : isLow ? 'text-danger' : 'text-text'}
       `}
     >
-      {formatTime(timeLeft)}
+      {formatTime(displayed)}
       {isLow && (
         <span className="ml-1 text-sm animate-ping opacity-50">⏰</span>
       )}
     </div>
   );
+}
+
+/** Format a duration in seconds as MM:SS. */
+function formatTime(seconds: number): string {
+  const total = Math.max(0, Math.ceil(seconds));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }

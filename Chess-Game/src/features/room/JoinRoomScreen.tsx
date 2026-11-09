@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { useAuth } from '../../contexts/AuthContext';
-import { roomService } from '../../services/room';
+import { useAuth } from '../../contexts/useAuth';
+import { roomService } from '../../services/roomService';
 import { ArrowLeft, Users } from 'lucide-react';
 
 export function JoinRoomScreen() {
@@ -15,7 +15,7 @@ export function JoinRoomScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleJoin = async () => {
-    if (!user || !profile) {
+    if (!user) {
       navigate('/login');
       return;
     }
@@ -30,23 +30,16 @@ export function JoinRoomScreen() {
     setError('');
 
     try {
-      const room = await roomService.joinRoom(
-        code,
-        user,
-        profile.displayName,
-        profile.photoURL,
-        profile.rankCard
-      );
+      await roomService.joinRoom(code, {
+        uid: user.uid,
+        displayName: profile?.displayName || user.displayName || 'Player',
+        photoURL: profile?.photoURL ?? user.photoURL ?? null,
+        rank: profile?.rankClassic ?? 1200,
+      });
 
-      if (room) {
-        // Navigate with URL param so user can share the link
-        navigate(`/room?code=${code}`);
-      } else {
-        setError('Room not found or not available');
-      }
+      navigate(`/room/${code}`);
     } catch (err) {
-      console.error('Join room error:', err);
-      setError('Failed to join room');
+      setError(err instanceof Error ? err.message : 'Could not join the room.');
     } finally {
       setLoading(false);
     }

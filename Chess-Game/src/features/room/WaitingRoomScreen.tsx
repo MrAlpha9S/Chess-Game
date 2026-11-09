@@ -1,103 +1,89 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
-import { roomService, type Room } from '../../services/room';
-import { Copy, CheckCircle, Users, Clock } from 'lucide-react';
+import { LoadingAnimation } from '../../components/common/LoadingAnimation';
+import { useAuth } from '../../contexts/useAuth';
+import { roomService } from '../../services/roomService';
+import type { Room } from '../../types/room';
+import { CheckCircle, Copy, Users, Clock, Play } from 'lucide-react';
 
+/**
+ * The waiting room.
+ *
+ * The host shares a code, the second player joins with it, and the host
+ * starts the game once both are seated.
+ */
 export function WaitingRoomScreen() {
+  const { roomId = '' } = useParams();
   const { user } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
-
-  // Get room code from state (navigate) hoặc URL params (refresh)
-  const stateRoomCode = location.state?.roomCode as string | undefined;
-  const urlParams = new URLSearchParams(location.search);
-  const urlRoomCode = urlParams.get('code') || undefined;
-  const roomCode = stateRoomCode || urlRoomCode || '';
 
   const [room, setRoom] = useState<Room | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isHost, setIsHost] = useState(false);
+  const [error, setError] = useState('');
 
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-
-  // Determine if current user is host
+  // Subscribe to the room.
   useEffect(() => {
-    if (room && user) {
-      setIsHost(room.hostId === user.uid);
-    }
-  }, [room, user]);
-
-  // Subscribe to room updates
-  useEffect(() => {
-    if (!roomCode) {
+    if (!roomId) {
       navigate('/lobby');
       return;
     }
 
-    console.log('WaitingRoom: Subscribing to room:', roomCode);
-
-    const unsubscribe = roomService.subscribeToRoom(roomCode, (updatedRoom) => {
-      if (!updatedRoom) {
-        console.log('WaitingRoom: Room deleted');
-        alert('Room no longer exists');
+    const unsubscribe = roomService.subscribeToRoom(roomId, (updated) => {
+      if (!updated) {
         navigate('/lobby');
         return;
       }
+      setRoom(updated);
 
-      setRoom(updatedRoom);
-
-      // If game started, navigate to match
-      if (updatedRoom.status === 'playing') {
-        console.log('WaitingRoom: Game started, navigating to room/match');
-        navigate('/room/match', { state: { roomCode } });
+      // The game has started: move on to the board.
+      if (updated.metadata.status === 'in_progress') {
+        navigate(`/match/${roomId}`);
       }
     });
 
-    unsubscribeRef.current = unsubscribe;
+    return () => unsubscribe();
+  }, [roomId, navigate]);
 
-    return () => {
-      unsubscribeRef.current?.();
-    };
-  }, [roomCode, navigate]);
+  const myColor = useMemo(() => {
+    if (!room || !user) return null;
+    return roomService.getPlayerColor(room, user.uid);
+  }, [room, user]);
 
-  // Handle copy room code
+  const isHost = myColor === 'white';
+
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(roomCode);
+    void navigator.clipboard.writeText(roomId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [roomCode]);
+  }, [roomId]);
 
-  // Handle leave room
-  const handleLeave = useCallback(async () => {
-    if (user) {
-      await roomService.leaveRoom(roomCode, user.uid);
-    }
-    navigate('/lobby');
-  }, [roomCode, user, navigate]);
-
-  // Handle ready
-  const handleReady = useCallback(async () => {
+  const handleStart = useCallback(async () => {
     if (!user) return;
-    await roomService.setReady(roomCode, user.uid, true);
-  }, [roomCode, user]);
+    setError('');
+    try {
+      await roomService.startGame(roomId, user.uid);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start the game.');
+    }
+  }, [roomId, user]);
 
-  // Get my player info
-  const myPlayer = room?.players.find(p => p && p.userId === user?.uid);
-  const opponent = room?.players.find(p => p && p.userId !== user?.uid);
-
-  // Get ready status
-  const myReady = myPlayer?.ready || false;
-  const oppReady = opponent?.ready || false;
+  const handleLeave = useCallback(() => {
+    navigate('/lobby');
+  }, [navigate]);
 
   if (!room) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="text-text-muted">Loading room...</div>
+        <LoadingAnimation variant="matchmaking" label="Waiting for the room..." />
       </div>
     );
   }
+
+  const white = room.players.white;
+  const black = room.players.black;
+  const timeControl = room.metadata.timeControl;
+  const minutes = Math.round(timeControl.initialMs / 60000);
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
@@ -105,10 +91,10 @@ export function WaitingRoomScreen() {
         {/* Room Code */}
         <div className="text-center mb-8">
           <p className="text-text-muted text-sm mb-2">
-            {isHost ? 'Share this code with your friend' : 'Waiting for host to start...'}
+            {isHost ? 'Share this code with your friend' : 'Waiting for the host to start...'}
           </p>
           <div className="flex items-center justify-center gap-3">
-            <span className="text-4xl font-mono font-bold tracking-widest">{roomCode}</span>
+            <span className="text-4xl font-mono font-bold tracking-widest">{roomId}</span>
             <button
               onClick={handleCopy}
               className="p-2 rounded-lg hover:bg-surface-raised transition-colors"
@@ -125,55 +111,61 @@ export function WaitingRoomScreen() {
 
         {/* Players */}
         <div className="flex justify-between items-center mb-8">
-          {/* Host */}
           <div className="text-center flex-1">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 ${myPlayer?.color === 'white' ? 'bg-white' : 'bg-gray-900'} ${myReady ? 'ring-4 ring-card-green' : ''}`}>
-              {room.players[0]?.photoURL ? (
-                <img src={room.players[0].photoURL!} alt="" className="w-full h-full rounded-full object-cover" />
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-2 overflow-hidden">
+              {white?.photoURL ? (
+                <img src={white.photoURL} alt="" className="w-full h-full object-cover" />
               ) : (
-                <Users className="w-8 h-8 text-gray-400" />
+                <Users className="w-8 h-8 text-gray-500" />
               )}
             </div>
-            <p className="font-medium text-sm">{room.players[0]?.displayName || 'Waiting...'}</p>
-            <p className="text-xs text-text-muted">{myPlayer?.color === 'white' ? 'White' : 'Black'}</p>
-            {myReady && <p className="text-xs text-card-green mt-1">Ready!</p>}
+            <p className="font-medium text-sm truncate">
+              {white?.displayName ?? 'Waiting...'}
+            </p>
+            <p className="text-xs text-text-muted">White</p>
           </div>
 
           <div className="text-text-muted text-xl font-bold px-4">VS</div>
 
-          {/* Guest */}
           <div className="text-center flex-1">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 ${opponent?.color === 'white' ? 'bg-white' : 'bg-gray-900'} ${oppReady ? 'ring-4 ring-card-green' : ''}`}>
-              {opponent?.photoURL ? (
-                <img src={opponent.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+            <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center mx-auto mb-2 overflow-hidden">
+              {black?.photoURL ? (
+                <img src={black.photoURL} alt="" className="w-full h-full object-cover" />
               ) : (
-                <Users className="w-8 h-8 text-gray-400" />
+                <Users className="w-8 h-8 text-gray-500" />
               )}
             </div>
-            <p className="font-medium text-sm">{opponent?.displayName || 'Waiting for player...'}</p>
-            <p className="text-xs text-text-muted">{opponent?.color === 'white' ? 'White' : 'Black'}</p>
-            {oppReady && <p className="text-xs text-card-green mt-1">Ready!</p>}
+            <p className="font-medium text-sm truncate">
+              {black?.displayName ?? 'Waiting for player...'}
+            </p>
+            <p className="text-xs text-text-muted">Black</p>
           </div>
         </div>
 
         {/* Time Control */}
         <div className="flex items-center justify-center gap-2 text-text-muted mb-6">
           <Clock className="w-4 h-4" />
-          <span className="text-sm">{room.timeControl / 60}+0</span>
+          <span className="text-sm">
+            {minutes}+{Math.round(timeControl.incrementMs / 1000)}
+          </span>
         </div>
+
+        {error && <p className="text-danger text-sm text-center mb-4">{error}</p>}
 
         {/* Actions */}
         <div className="space-y-3">
-          {!myReady && room.players[1] && (
-            <Button onClick={handleReady} className="w-full h-12">
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Ready
+          {isHost ? (
+            <Button
+              onClick={handleStart}
+              disabled={!black}
+              className="w-full h-12"
+            >
+              <Play className="w-5 h-5 mr-2" />
+              {black ? 'Start Game' : 'Waiting for a second player...'}
             </Button>
-          )}
-
-          {myReady && (
-            <div className="text-center text-card-green font-medium">
-              Waiting for opponent...
+          ) : (
+            <div className="text-center text-card-green font-medium py-3">
+              {black ? 'Ready — waiting for the host to start' : 'Waiting for the host...'}
             </div>
           )}
 

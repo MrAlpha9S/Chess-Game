@@ -76,7 +76,7 @@ public/assets/pieces/
 ```
 
 ### Piece Renderer Component Schema
-`src/components/board/Piece.tsx` dynamically maps the piece type and color to the high-res PNG path with optimized hardware-accelerated transforms.
+`src/features/board/components/Piece.tsx` dynamically maps the piece type and color to the high-res PNG path (via `pieceImages.ts`) with optimized hardware-accelerated transforms.
 
 ---
 
@@ -137,34 +137,60 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
 
 ```
 src/
-├── app/
-│   ├── App.tsx
-│   └── Router.tsx
 ├── components/
-│   ├── ui/                    # shadcn/ui components (Button, Dialog, Tooltip, Tabs)
+│   ├── ui/                        # Button, Card, Dialog, Input, ScrollArea
 │   ├── common/
-│   │   ├── Header.tsx
-│   │   └── LoadingAnimation.tsx # Standalone loading & status screen module
-│   ├── board/
-│   │   ├── Board.tsx          # 10x10 Matrix Board Renderer
-│   │   ├── Square.tsx         # Interactive target square
-│   │   ├── Piece.tsx          # 512px PNG piece renderer
-│   │   └── BoardOverlay.tsx   # Skill targets / freeze indicators
-│   ├── cards/                 # Prepared Phase 2 UI Dock
-│   │   ├── CardTray.tsx
-│   │   ├── CardTile.tsx
-│   │   └── DeckBuilder.tsx
+│   │   └── LoadingAnimation.tsx   # Standalone loading & status screen module
 │   ├── hud/
-│   │   ├── ClockDisplay.tsx   # JetBrains Mono countdown timers
-│   │   ├── MoveLog.tsx        # History log scroll panel
-│   │   └── PlayerProfile.tsx
-│   └── modals/
-│       ├── PrepPhaseModal.tsx # Pre-game 20s preparation dialog
-│       └── GameOverModal.tsx  # Post-match summary dialog
+│   │   └── MoveLog.tsx            # SAN move history panel
+│   └── (board pieces live under features/board, below)
+├── contexts/
+│   ├── AuthContext.tsx            # The auth provider
+│   ├── authContextDefinition.ts   # The context and its types
+│   └── useAuth.ts                 # The hook that reads the context
+├── features/                      # Screens, grouped by feature
+│   ├── auth/LoginScreen.tsx
+│   ├── board/components/
+│   │   ├── BoardGrid.tsx          # 10x10 Matrix Board Renderer
+│   │   ├── Piece.tsx              # 512px PNG piece renderer
+│   │   └── pieceImages.ts         # The piece-code to sprite mapping
+│   ├── lobby/LobbyScreen.tsx
+│   ├── match/
+│   │   ├── MatchScreen.tsx        # The main match view
+│   │   └── components/
+│   │       └── ClockDisplay.tsx   # JetBrains Mono countdown display
+│   ├── result/ResultScreen.tsx
+│   └── room/
+│       ├── CreateRoomScreen.tsx
+│       ├── JoinRoomScreen.tsx
+│       └── WaitingRoomScreen.tsx
+├── hooks/
+│   ├── useGameSync.ts             # RTDB listener & move dispatcher
+│   ├── useTimer.ts                # The synchronised clock
+│   └── usePointerField.ts         # 3D pointer tilt
+├── lib/
+│   ├── audio.ts                   # Web Audio sound effects
+│   └── firebase.ts
 └── stores/
-    ├── useMatchStore.ts       # Board & card active UI states
-    └── useSettingsStore.ts    # Sound & animation settings
+    ├── useGameStore.ts            # Time control selection
+    └── useSettingsStore.ts        # Sound & animation settings
 ```
+
+### Routes
+
+| Route | Screen | Access |
+| :--- | :--- | :--- |
+| `/login` | `LoginScreen` | Signed out only |
+| `/lobby` | `LobbyScreen` | Signed in |
+| `/create-room` | `CreateRoomScreen` | Signed in |
+| `/join-room` | `JoinRoomScreen` | Signed in |
+| `/room/:roomId` | `WaitingRoomScreen` | Signed in |
+| `/match/:roomId` | `MatchScreen` | Signed in |
+| `/result` | `ResultScreen` | Signed in |
+
+Both `/login` and the game routes redirect to each other when the auth state
+does not match, so a signed-in player never sees the login screen and a
+signed-out player never reaches the board.
 
 ---
 
@@ -172,12 +198,14 @@ src/
 
 | Screen | Core Components | Key Features |
 | :--- | :--- | :--- |
-| **Login / Auth** | `Card`, `Button`, `LoadingAnimation` | Auth state verification & Google login. |
-| **Lobby** | `Tabs`, `Select`, `Button` | Mode selection (Classic 1v1 vs Card Mode). |
-| **Matchmaking** | `LoadingAnimation` (variant="matchmaking") | Searching indicator with queue timers. |
-| **Preparation** | `PrepPhaseModal`, `Progress` | Pre-match setup (20s countdown lock). |
-| **In-Game Match** | `Board`, `Piece` (PNG 512px), `ClockDisplay`, `CardTray` | Real-time main match view. Responsive layouts auto-fold panels on mobile. |
-| **Post-Match** | `GameOverModal`, `Button` | Game end statistics, rating changes, and quick replay trigger. |
+| **Login / Auth** | `Card`, `Button`, `LoadingAnimation` | Auth state verification & Google/Facebook login. |
+| **Lobby** | `Card`, `Button` | Create or join a room by six-character code, plus the time control picker. |
+| **Waiting Room** | `Card`, `Button` | Shows the room code and both players until the game starts. |
+| **In-Game Match** | `BoardGrid`, `Piece` (PNG 512px), `ClockDisplay`, `MoveLog` | Real-time main match view. Responsive layouts auto-fold panels on mobile. |
+| **Post-Match** | `Button`, `Badge` | The result read from the room, the final position, and a link back to the board. |
+
+Phase 1 has no matchmaking queue and no preparation phase: both are Phase 2
+features, and the lobby offers only the two room actions.
 
 ---
 

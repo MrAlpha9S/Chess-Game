@@ -1,49 +1,48 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
-import { useGameStore } from '../../stores/gameStore';
-import { roomService } from '../../services/room';
+import { useAuth } from '../../contexts/useAuth';
+import { useGameStore } from '../../stores/useGameStore';
+import { roomService } from '../../services/roomService';
 import { ArrowLeft, Clock, Sword } from 'lucide-react';
 
 export function CreateRoomScreen() {
   const { user, profile } = useAuth();
-  const { selectedTimeControl } = useGameStore();
+  const { selectedTimeControlMs, selectedIncrementMs } = useGameStore();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleCreate = async () => {
-    if (!user || !profile) {
+    if (!user) {
       navigate('/login');
       return;
     }
 
     setLoading(true);
+    setError('');
 
     try {
-      const room = await roomService.createRoom(
-        user,
-        profile.displayName,
-        profile.photoURL,
-        profile.rankCard,
-        'card-casual',
-        selectedTimeControl
+      const roomId = await roomService.createRoom(
+        {
+          uid: user.uid,
+          displayName: profile?.displayName || user.displayName || 'Player',
+          photoURL: profile?.photoURL ?? user.photoURL ?? null,
+          rank: profile?.rankClassic ?? 1200,
+        },
+        { initialMs: selectedTimeControlMs, incrementMs: selectedIncrementMs },
       );
 
-      if (room) {
-        // Navigate to waiting room with the room code
-        navigate('/room', { state: { roomCode: room.id } });
-      } else {
-        alert('Failed to create room');
-      }
+      navigate(`/room/${roomId}`);
     } catch (err) {
-      console.error('Create room error:', err);
-      alert('Failed to create room');
+      setError(err instanceof Error ? err.message : 'Could not create the room.');
     } finally {
       setLoading(false);
     }
   };
+
+  const minutes = Math.round(selectedTimeControlMs / 60000);
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
@@ -71,9 +70,13 @@ export function CreateRoomScreen() {
               <Clock className="w-4 h-4" />
               <span className="text-sm">Time Control</span>
             </div>
-            <span className="font-mono font-semibold">{selectedTimeControl / 60}+0</span>
+            <span className="font-mono font-semibold">
+              {minutes}+{Math.round(selectedIncrementMs / 1000)}
+            </span>
           </div>
         </div>
+
+        {error && <p className="text-danger text-sm text-center mb-4">{error}</p>}
 
         {/* Create Button */}
         <Button

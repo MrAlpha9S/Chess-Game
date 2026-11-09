@@ -3,24 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "functions"
-  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:engine": "npm run build -w @chess-game/chess-engine",
-    "build:functions": "npm run build -w functions",
     "test": "vitest run",
-    "test:engine": "npm run test -w @chess-game/chess-engine",
+    "test:engine": "vitest run src/engine",
+    "generate:pieces": "node scripts/generate-pieces.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "emulators": "firebase emulators:start",
-    "deploy:functions": "npm run build:engine && npm run build:functions && firebase deploy --only functions"
+    "deploy": "npm run build && firebase deploy --only hosting,database"
   },
   "dependencies": {
-    "@chess-game/chess-engine": "*",
     "@tailwindcss/vite": "^4.3.3",
     "chessops": "^0.15.1",
     "firebase": "^13.0.0",

@@ -2,6 +2,15 @@
 
 Kế hoạch chi tiết để xây dựng hoàn chỉnh một ứng dụng cờ vua trực tuyến 1v1 trên nền tảng Serverless (Firebase Spark Plan + Vercel Static Hosting) với kiến trúc sẵn sàng mở rộng sang Cờ Vua Thẻ Bài (Phase 2).
 
+> **Trạng thái (cập nhật):**
+> - **1.1** — Đã hoàn thành: Vite + React + TS + Tailwind v4, theme token, Firebase Auth (Google), `LoadingAnimation`.
+> - **1.2** — Đã hoàn thành: `BoardGrid10x10`, `IChessEngine`/`StandardEngine` (chessops), `BoardGrid`/`Piece` (PNG 512px), engine test suite.
+> - **1.3** — Đã hoàn thành: schema `/rooms` + `/presence`, `roomService`, `useGameSync`, Security Rules chặn đi sai lượt, đồng hồ đồng bộ `useTimer`.
+> - **1.4** — Đã hoàn thành: `MoveLog`, âm thanh Web Audio (`lib/audio.ts`), `usePointerField`, màn kết quả `ResultScreen`.
+> - **1.5** — Đang tiến hành: tối ưu `React.memo`, README, deploy.
+>
+> Lưu ý: Luồng matchmaking tự động (queue) đã bị loại bỏ theo quyết định client-first — chỉ dùng `/rooms` (tạo + nhập mã 6 ký tự). Phần nền móng thẻ bài (card) bị trì hoãn sang Phase 2, container `cardState` vẫn tồn tại rỗng trong schema.
+
 ---
 
 ## Phase 1.1: Khởi tạo Môi trường & Thiết kế Hệ thống Cơ bản (Sprint 1)

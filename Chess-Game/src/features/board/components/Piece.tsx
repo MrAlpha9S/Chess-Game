@@ -1,73 +1,41 @@
 import { memo } from 'react';
-import type { Piece as PieceType } from '../../../types';
+import { pieceImage, type PieceCode } from './pieceImages';
 
 interface PieceProps {
-  piece: PieceType;
-  isSelected?: boolean;
-  isHovered?: boolean;
-  onClick?: () => void;
-  style?: React.CSSProperties;
+  /** The piece code, for example 'wk'. */
+  piece: PieceCode;
+  /** True when the piece is the king of the side being checked. */
+  isInCheck?: boolean;
+  /** True when the piece is the last one to have moved. */
+  isHighlighted?: boolean;
 }
 
-const PIECE_UNICODE: Record<string, { white: string; black: string }> = {
-  king: { white: '♔', black: '♚' },
-  queen: { white: '♕', black: '♛' },
-  rook: { white: '♖', black: '♜' },
-  bishop: { white: '♗', black: '♝' },
-  knight: { white: '♘', black: '♞' },
-  pawn: { white: '♙', black: '♟' },
-};
-
-function PieceComponent({ piece, isSelected, isHovered, onClick, style }: PieceProps) {
-  const unicode = PIECE_UNICODE[piece.type]?.[piece.color] || '?';
-  const isWhite = piece.color === 'white';
-
+/**
+ * A chess piece sprite.
+ *
+ * The sprite scales with its square: the board sets its size through the
+ * container query units on the parent, so the piece fills the square without
+ * a fixed pixel size.
+ */
+function PieceComponent({ piece, isInCheck, isHighlighted }: PieceProps) {
   return (
-    <button
-      onClick={onClick}
-      className={`
-        relative flex items-center justify-center
-        w-full h-full
-        transition-all duration-150
-        ${isSelected ? 'scale-110 z-10' : ''}
-        ${isHovered ? 'scale-105' : ''}
-        ${piece.isRoyal ? 'cursor-pointer' : ''}
-        active:scale-95
-      `}
+    <span
+      className="pointer-events-none select-none flex items-center justify-center w-full h-full"
       style={{
-        transform: isSelected ? 'scale(1.1)' : isHovered ? 'scale(1.05)' : 'scale(1)',
-        filter: isSelected ? 'drop-shadow(0 4px 8px rgba(229, 181, 59, 0.5))' : undefined,
-        ...style,
+        filter: isInCheck
+          ? 'drop-shadow(0 0 6px rgba(220, 38, 38, 0.95))'
+          : isHighlighted
+            ? 'drop-shadow(0 0 6px rgba(229, 181, 59, 0.85))'
+            : 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45))',
       }}
     >
-      {/* Main piece */}
-      <span
-        className="text-5xl md:text-6xl select-none pointer-events-none transition-transform duration-200"
-        style={{
-          color: isWhite ? '#F5F5F5' : '#1a1a1a',
-          textShadow: isWhite
-            ? '0 2px 4px rgba(0,0,0,0.3), 0 0 1px rgba(0,0,0,0.5)'
-            : '0 2px 4px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.1)',
-        }}
-      >
-        {unicode}
-      </span>
-
-      {/* Royal crown indicator */}
-      {piece.isRoyal && (
-        <span className="absolute -top-1 -right-1 text-xs">👑</span>
-      )}
-
-      {/* Selected ring */}
-      {isSelected && (
-        <span className="absolute inset-0 rounded-full border-2 border-card-gold animate-pulse" />
-      )}
-
-      {/* Check indicator */}
-      {piece.isRoyal && (
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-danger animate-pulse" />
-      )}
-    </button>
+      <img
+        src={pieceImage(piece)}
+        alt=""
+        draggable={false}
+        className="w-[92%] h-[92%] object-contain"
+      />
+    </span>
   );
 }
 

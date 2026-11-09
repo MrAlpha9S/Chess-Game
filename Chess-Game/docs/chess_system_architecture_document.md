@@ -120,11 +120,11 @@ To ensure zero rewriting of the core engine when moving from Phase 1 to Phase 2:
 
         /* --- PHASE 2 PREPARED FIELDS (Default values used in Phase 1) --- */
         "gridConfig": {
-          "minRow": 2, // Rows 2 to 7 (8x8 active center inside 10x10 matrix)
-          "maxRow": 7,
-          "minCol": 2, // Cols 2 to 7
-          "maxCol": 7,
-          "holes": []  // Array of destroyed squares (e.g. "d4")
+          "minRow": 1, // Rows 1 to 8 (8x8 active centre inside the 10x10 matrix)
+          "maxRow": 8,
+          "minCol": 1, // Cols 1 to 8
+          "maxCol": 8,
+          "holes": []  // Array of destroyed squares (e.g. "4,4")
         },
         "variantState": {
           "royalTag": { "white": "e1", "black": "e8" }, // Position of King/Royal piece
@@ -146,7 +146,7 @@ To ensure zero rewriting of the core engine when moving from Phase 1 to Phase 2:
         }
       },
       "moveHistory": {
-        "0": { "from": "e2", "to": "e4", "san": "e4", "type": "move", "timestamp": 1700000010000 }
+        "0": { "from": "e2", "to": "e4", "san": "e4", "type": "move", "by": "USER_ID_ALPHA", "timestamp": 1700000010000 }
       }
     }
   },
@@ -168,46 +168,58 @@ To ensure zero rewriting of the core engine when moving from Phase 1 to Phase 2:
 
 ```
 src/
-├── assets/                  # Piece SVGs, card frames, board sound effects
-├── components/              # React UI Components
-│   ├── board/
-│   │   ├── Board10x10.tsx   # Dynamic 10x10 Grid Renderer
-│   │   ├── Square.tsx       # Interactive Square Drop Target
-│   │   ├── Piece.tsx        # Piece Render Component with Badges
-│   │   └── PromotionModal.tsx
-│   ├── cards/               # Phase 2 UI Extensibility
-│   │   ├── CardHand.tsx     # Player Card Dock Component
-│   │   └── CardSlot.tsx     # Individual Card Renderer
+├── components/              # Shared React UI Components
+│   ├── common/
+│   │   └── LoadingAnimation.tsx  # Waiting indicator (matchmaking|board-init|spinner)
 │   ├── hud/
-│   │   ├── PlayerCard.tsx   # User profile, active timers, stack indicators
-│   │   ├── MoveLog.tsx      # San move history log
-│   │   └── Controls.tsx     # Resign, Draw Offer, Flip Board
-│   └── common/
-│       └── ProtectedRoute.tsx
+│   │   └── MoveLog.tsx           # SAN move history log
+│   └── ui/                        # Button, Card, Dialog, Input, ScrollArea
+├── contexts/
+│   └── AuthContext.tsx       # Firebase auth + profile
 ├── engine/                  # Core & Variant Abstract Logic
 │   ├── grid/
-│   │   └── BoardGrid10x10.ts# 10x10 Matrix Matrix Border Manager
+│   │   ├── BoardGrid10x10.ts # 10x10 Matrix Border Manager
+│   │   ├── constants.ts      # Active-region constants (shared with the schema)
+│   │   ├── coords.ts         # Grid <-> algebraic conversions
+│   │   ├── board.ts          # GridBoard type and fenToGrid/gridToFen
+│   │   └── initialBoard.ts   # The starting position
 │   ├── core/
 │   │   ├── IChessEngine.ts        # Abstract Unified Game Engine Interface
-│   │   ├── StandardEngine.ts     # Standard chessops Adapter (Phase 1 Engine)
-│   │   └── EngineFactory.ts      # Instantiation Factory
-│   └── variants/                 # Phase 2 Plugin Implementations
-│       ├── BaseVariantEngine.ts
-│       ├── AtomicChessEngine.ts
-│       └── CardChessEngine.ts
+│   │   └── StandardEngine.ts      # Standard chessops Adapter (Phase 1 Engine)
+│   ├── index.ts             # Public engine API
+│   └── engine.test.ts       # Engine test suite
+├── features/                # Screens, grouped by feature
+│   ├── auth/LoginScreen.tsx
+│   ├── board/components/
+│   │   ├── BoardGrid.tsx    # Dynamic 10x10 Grid Renderer
+│   │   └── Piece.tsx        # PNG sprite renderer
+│   ├── lobby/LobbyScreen.tsx
+│   ├── match/MatchScreen.tsx        # The main game screen
+│   ├── result/ResultScreen.tsx
+│   └── room/
+│       ├── CreateRoomScreen.tsx
+│       ├── JoinRoomScreen.tsx
+│       └── WaitingRoomScreen.tsx
 ├── hooks/                   # Custom Hooks
-│   ├── useAuth.ts           # Firebase Google Authentication
-│   ├── useGameSync.ts       # Firebase RTDB State Listener & Dispatcher
+│   ├── useGameSync.ts       # RTDB room listener & dispatcher
 │   ├── useTimer.ts          # Clock synchronization hook
-│   └── useChessGame.ts      # Bridge between React UI and IChessEngine
-├── store/                   # Zustand Global Stores
-│   ├── useAuthStore.ts
-│   └── useGameStore.ts
-├── services/                # Firebase Core Initialization
-│   ├── firebase.ts
-│   └── rtdbService.ts
+│   └── usePointerField.ts   # 3D pointer tilt
+├── lib/
+│   ├── audio.ts             # Web Audio sound effects
+│   └── firebase.ts          # Firebase core initialization
+├── services/
+│   └── roomService.ts       # The only data service: /rooms and /presence
+├── stores/
+│   ├── useGameStore.ts      # Time control selection
+│   └── useSettingsStore.ts  # Sound and pointer-field preferences
+├── types/
+│   ├── index.ts             # Shared UI types
+│   └── room.ts              # The room schema (mirrors §3)
 └── App.tsx
 ```
+
+The `variants/` folder, the card components, and the card data are Phase 2
+work and are not present in Phase 1.
 
 ---
 
@@ -223,17 +235,23 @@ Firebase Realtime Database Security Rules strictly regulate game synchronization
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".create": "auth != null && !data.exists()",
+        ".write": "auth != null && !data.exists()",
 
         "metadata": {
           ".write": "auth != null && (
-            data.child('status').val() === 'waiting' ||
+            !data.exists() ||
             root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
             root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
           )"
         },
 
         "players": {
+          ".write": "auth != null && (
+            !data.exists() ||
+            root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
+            root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
+          )",
+
           "white": {
             ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)"
           },
@@ -244,17 +262,18 @@ Firebase Realtime Database Security Rules strictly regulate game synchronization
 
         "boardState": {
           ".write": "auth != null && (
-            (data.child('turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) ||
-            (data.child('turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)
+            (!data.exists() && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) ||
+            (data.child('turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid && newData.child('turn').val() === 'black') ||
+            (data.child('turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid && newData.child('turn').val() === 'white')
           )",
-          ".validate": "newData.hasChildren(['fen', 'turn'])"
+          ".validate": "!newData.exists() || (newData.hasChildren(['fen', 'turn']) && newData.child('fen').isString())"
         },
 
         "moveHistory": {
-          ".write": "auth != null && (
-            (root.child('rooms/' + $roomId + '/boardState/turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) ||
-            (root.child('rooms/' + $roomId + '/boardState/turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)
-          )"
+          "$moveId": {
+            ".write": "auth != null && newData.child('by').val() === auth.uid",
+            ".validate": "newData.hasChildren(['from', 'to', 'san', 'timestamp'])"
+          }
         },
 
         "cardState": {
@@ -291,7 +310,7 @@ export interface Coordinate {
 }
 
 export class BoardGrid10x10 {
-  private activeBounds = { minRow: 2, maxRow: 7, minCol: 2, maxCol: 7 };
+  private activeBounds = { minRow: 1, maxRow: 8, minCol: 1, maxCol: 8 };
   private holes: Set<string> = new Set();
 
   constructor(isPhase1: boolean = true) {
@@ -301,9 +320,15 @@ export class BoardGrid10x10 {
   }
 
   public resetToPhase1Bounds(): void {
-    // Phase 1 enforces standard 8x8 inside rows 2..7 and cols 2..7
-    this.activeBounds = { minRow: 2, maxRow: 7, minCol: 2, maxCol: 7 };
+    // Phase 1 enforces the standard 8x8 in rows 1..8 and cols 1..8
+    // (0-indexed): the centred block of the 10x10 matrix, leaving the
+    // outer 36 squares locked.
+    this.activeBounds = { minRow: 1, maxRow: 8, minCol: 1, maxCol: 8 };
     this.holes.clear();
+  }
+
+  public get activeBounds(): { minRow: number; maxRow: number; minCol: number; maxCol: number } {
+    return this.activeBounds;
   }
 
   public isSquarePlayable(row: number, col: number): boolean {
@@ -329,20 +354,19 @@ export class BoardGrid10x10 {
   public setHole(row: number, col: number): void {
     this.holes.add(`${row},${col}`);
   }
-
-  public algebraicToGrid(square: string): Coordinate {
-    // Converts algebraic notation e.g., "e4" to 10x10 grid relative coordinate
-    const col = square.charCodeAt(0) - 'a'.charCodeAt(0) + 2;
-    const row = parseInt(square[1], 10) + 1;
-    return { row, col };
-  }
-
-  public gridToAlgebraic(row: number, col: number): string {
-    const file = String.fromCharCode('a'.charCodeAt(0) + (col - 2));
-    const rank = (row - 1).toString();
-    return `${file}${rank}`;
-  }
 }
+```
+
+The algebraic conversions live in `src/engine/grid/coords.ts` and are shared by the
+grid manager and the engine, so the mapping can only live in one place.
+Grid row 1 is rank 8 (the black back rank, top-down) and column 1 is file
+`a`.
+```typescript
+// grid -> chessops square (0..63)
+gridToSquare(row, col) = (8 - row) * 8 + (col - 1)
+// chessops square -> grid
+RANK_TO_ROW[rank - 1] = 9 - rank        // rank 8 -> row 1
+FILE_TO_COL[file]     = file + 1        // file a (0) -> col 1
 ```
 
 ### 6.2 Core Unified Engine Interface
@@ -388,9 +412,11 @@ export interface IChessEngine {
 ```typescript
 import { Chess } from 'chessops/chess';
 import { parseFen, makeFen } from 'chessops/fen';
-import { parseSquare, makeSquare, parseUci, makeSan } from 'chessops/util';
+import { parseSquare, makeSquare, parseUci } from 'chessops/util';
+import { makeSan } from 'chessops/san';
 import { IChessEngine, MoveRequest, MoveResult, Color } from './IChessEngine';
 import { BoardGrid10x10 } from '../grid/BoardGrid10x10';
+import { gridToSquare, squareToGrid } from '../grid/coords';
 
 export class StandardEngine implements IChessEngine {
   private pos!: Chess;
@@ -404,11 +430,12 @@ export class StandardEngine implements IChessEngine {
   public init(fen?: string): void {
     const defaultFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const parsed = parseFen(fen || defaultFen);
-    if (parsed.isErr()) {
+    // chessops 0.15 exposes `isErr` as a property, not a method.
+    if (parsed.isErr) {
       throw new Error(`Invalid FEN: ${fen}`);
     }
     const chessRes = Chess.fromSetup(parsed.unwrap());
-    if (chessRes.isErr()) {
+    if (chessRes.isErr) {
       throw new Error('Invalid chess setup from FEN');
     }
     this.pos = chessRes.unwrap();
@@ -421,10 +448,10 @@ export class StandardEngine implements IChessEngine {
     const dests: string[] = [];
     for (const to of this.pos.dests(sq)) {
       const destSquareStr = makeSquare(to);
-      const coord = this.gridManager.algebraicToGrid(destSquareStr);
+      const coord = squareToGrid(to);
 
       // Enforce 10x10 grid boundaries
-      if (this.gridManager.isSquarePlayable(coord.row, coord.col)) {
+      if (coord && this.gridManager.isSquarePlayable(coord.row, coord.col)) {
         dests.push(destSquareStr);
       }
     }
@@ -436,29 +463,25 @@ export class StandardEngine implements IChessEngine {
     const move = parseUci(uciString);
 
     if (!move) {
-      return {
-        isValid: false,
-        newFen: this.getFen(),
-        san: '',
-        isCheck: false,
-        isCheckmate: false,
-        isStalemate: false,
-        errorReason: 'Invalid move representation'
-      };
+      return this.reject('Invalid move representation');
     }
 
     const fromSq = parseSquare(request.from);
     const toSq = parseSquare(request.to);
 
     if (fromSq === undefined || toSq === undefined) {
-      return { isValid: false, newFen: this.getFen(), san: '', isCheck: false, isCheckmate: false, isStalemate: false, errorReason: 'Square parsing failed' };
+      return this.reject('Square parsing failed');
     }
 
-    const dests = this.pos.dests(fromSq);
-    if (!dests.has(toSq)) {
-      return { isValid: false, newFen: this.getFen(), san: '', isCheck: false, isCheckmate: false, isStalemate: false, errorReason: 'Illegal move' };
+    // `isLegal` covers the two cases where the destination is not literally
+    // one of the pseudo-legal targets: castling is encoded as king-takes-
+    // rook, and en passant targets a square no piece stands on. Testing
+    // `dests.has(toSq)` rejects both.
+    if (!this.pos.isLegal(move)) {
+      return this.reject('Illegal move');
     }
 
+    const captured = this.pos.board.get(toSq);
     const san = makeSan(this.pos, move);
     this.pos.play(move);
 
@@ -472,7 +495,8 @@ export class StandardEngine implements IChessEngine {
       san,
       isCheck,
       isCheckmate: isEnd && isCheck,
-      isStalemate: isEnd && !isCheck
+      isStalemate: isEnd && !isCheck,
+      capturedPiece: captured ? `${captured.color}${captured.role}` : undefined,
     };
   }
 

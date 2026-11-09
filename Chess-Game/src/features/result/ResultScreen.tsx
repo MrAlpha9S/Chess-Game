@@ -1,281 +1,226 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Dialog';
-import { useAuth } from '../../contexts/AuthContext';
-import { useGameStore } from '../../stores/gameStore';
-import {
-  Trophy,
-  Meh,
-  Frown,
-  RotateCcw,
-  Home,
-  Eye,
-  Star,
-} from 'lucide-react';
+import { useAuth } from '../../contexts/useAuth';
+import { roomService } from '../../services/roomService';
+import type { Room } from '../../types/room';
+import { Trophy, Meh, Frown, Home, RotateCcw } from 'lucide-react';
 
-interface ResultScreenProps {
-  result: 'win' | 'loss' | 'draw';
-  eloChange: number;
-  oldRank: number;
-  newRank: number;
+/** The outcome of a finished game, as the result screen shows it. */
+type Outcome = 'win' | 'loss' | 'draw';
+
+/**
+ * The result screen.
+ *
+ * The outcome comes from the room itself, so both players see the same
+ * verdict without any extra bookkeeping.
+ */
+
+/** A single confetti flake. */
+interface ConfettiPiece {
+  left: number;
+  delay: number;
   duration: number;
-  moveCount: number;
-  cardsUsed: number;
-  totalCards: number;
-  gameMode: 'classic' | 'card';
+  color: string;
+  glyph: string;
 }
 
-export function ResultScreen({
-  result,
-  eloChange,
-  oldRank,
-  newRank,
-  duration,
-  moveCount,
-  cardsUsed,
-  totalCards,
-  gameMode,
-}: ResultScreenProps) {
-  const { updateProfile, refreshProfile } = useAuth();
-  const { setScreen } = useGameStore();
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+const CONFETTI_COLORS = ['#E5B53B', '#4C8DF6', '#3FB97A', '#9A6BFF', '#E5484D'];
+const CONFETTI_GLYPHS = ['⭐', '✨', '🎊', '🏆'];
 
-  // Show confetti for wins
-  useEffect(() => {
-    if (result === 'win') {
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [result]);
+/**
+ * A small deterministic pseudo-random generator.
+ *
+ * The confetti is seeded from the room id, so the same game always produces
+ * the same celebration. That keeps the render pure — a render that drew
+ * fresh random values would restart the animation on every pass.
+ */
+function seededRandom(seed: string): () => number {
+  let state = 0;
+  for (let i = 0; i < seed.length; i++) {
+    state = (state * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return () => {
+    // xorshift32
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    state >>>= 0;
+    return state / 0x100000000;
+  };
+}
 
-  // Update rank in Firebase when result is shown
+/**
+ * Build the confetti pieces for a game.
+ */
+function makeConfetti(seed: string): ConfettiPiece[] {
+  const random = seededRandom(seed || 'chess');
+  return Array.from({ length: 50 }, () => ({
+    left: random() * 100,
+    delay: random() * 2,
+    duration: 2 + random() * 2,
+    color: CONFETTI_COLORS[Math.floor(random() * CONFETTI_COLORS.length)],
+    glyph: CONFETTI_GLYPHS[Math.floor(random() * CONFETTI_GLYPHS.length)],
+  }));
+}
+
+export function ResultScreen() {
+  const { user, profile } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const roomId = (location.state as { roomId?: string } | null)?.roomId ?? '';
+  const [room, setRoom] = useState<Room | null>(null);
+
+  // Read the finished room.
   useEffect(() => {
-    const saveResult = async () => {
-      if (result !== 'draw' && eloChange !== 0) {
-        setIsSaving(true);
-        try {
-          if (gameMode === 'card') {
-            await updateProfile({ rankCard: newRank });
-          } else {
-            await updateProfile({ rankClassic: newRank });
-          }
-          await refreshProfile();
-        } catch (err) {
-          console.error('Failed to save result:', err);
-        } finally {
-          setIsSaving(false);
-        }
-      }
+    if (!roomId) return;
+    let cancelled = false;
+
+    const unsubscribe = roomService.subscribeToRoom(roomId, (updated) => {
+      if (cancelled) return;
+      setRoom(updated);
+    });
+
+    void roomService.getRoom(roomId).then((updated) => {
+      if (!cancelled) setRoom(updated);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
     };
+  }, [roomId]);
 
-    saveResult();
-  }, [result, eloChange, newRank, gameMode]);
+  const outcome = useMemo<Outcome>(() => {
+    if (!room) return 'draw';
+    const winner = room.metadata.winner;
+    if (!winner || winner === 'draw') return 'draw';
+    const myColor = roomService.getPlayerColor(room, user?.uid ?? '');
+    if (!myColor) return 'draw';
+    return winner === myColor ? 'win' : 'loss';
+  }, [room, user?.uid]);
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // The confetti is derived from the room id, so it is stable across
+  // renders and the CSS animation plays once and fades itself out.
+  const confetti = useMemo(() => makeConfetti(roomId), [roomId]);
+  const showConfetti = outcome === 'win';
+
+  const content = {
+    win: {
+      icon: <Trophy className="w-16 h-16 text-card-gold" />,
+      title: 'Victory!',
+      subtitle: 'Congratulations, you won!',
+      color: 'text-card-gold',
+      bgColor: 'bg-card-gold/10',
+    },
+    loss: {
+      icon: <Frown className="w-16 h-16 text-danger" />,
+      title: 'Defeat',
+      subtitle: 'Better luck next time!',
+      color: 'text-danger',
+      bgColor: 'bg-danger/10',
+    },
+    draw: {
+      icon: <Meh className="w-16 h-16 text-card-silver" />,
+      title: 'Draw',
+      subtitle: 'A well-fought match!',
+      color: 'text-card-silver',
+      bgColor: 'bg-card-silver/10',
+    },
+  }[outcome];
+
+  const moveCount = room ? Object.keys(room.moveHistory).length : 0;
+  const reason = room?.metadata.terminationReason;
+
+  const reasonText: Record<string, string> = {
+    checkmate: 'by checkmate',
+    stalemate: 'by stalemate',
+    insufficient_material: 'by insufficient material',
+    fifty_move_rule: 'by the fifty-move rule',
+    threefold_repetition: 'by threefold repetition',
+    resignation: 'by resignation',
+    timeout: 'on time',
+    draw_agreement: 'by agreement',
   };
-
-  const getResultContent = () => {
-    switch (result) {
-      case 'win':
-        return {
-          icon: <Trophy className="w-16 h-16 text-card-gold" />,
-          title: 'Victory!',
-          subtitle: 'Congratulations, you won!',
-          color: 'text-card-gold',
-          bgColor: 'bg-card-gold/10',
-        };
-      case 'loss':
-        return {
-          icon: <Frown className="w-16 h-16 text-danger" />,
-          title: 'Defeat',
-          subtitle: 'Better luck next time!',
-          color: 'text-danger',
-          bgColor: 'bg-danger/10',
-        };
-      case 'draw':
-        return {
-          icon: <Meh className="w-16 h-16 text-card-silver" />,
-          title: 'Draw',
-          subtitle: 'A well-fought match!',
-          color: 'text-card-silver',
-          bgColor: 'bg-card-silver/10',
-        };
-    }
-  };
-
-  const content = getResultContent();
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      {/* Confetti effect for wins */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
-          {[...Array(50)].map((_, i) => (
+          {confetti.map((piece, i) => (
             <div
               key={i}
               className="absolute animate-fall"
               style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`,
-                color: ['#E5B53B', '#4C8DF6', '#3FB97A', '#9A6BFF', '#E5484D'][
-                  Math.floor(Math.random() * 5)
-                ],
+                left: `${piece.left}%`,
+                animationDelay: `${piece.delay}s`,
+                animationDuration: `${piece.duration}s`,
+                color: piece.color,
               }}
             >
-              {['⭐', '✨', '🎊', '🏆'][Math.floor(Math.random() * 4)]}
+              {piece.glyph}
             </div>
           ))}
         </div>
       )}
 
       <div className="w-full max-w-md">
-        {/* Result header */}
         <div className={`text-center p-8 rounded-t-2xl ${content.bgColor}`}>
-          <div className="flex justify-center mb-4 animate-bounce">
-            {content.icon}
-          </div>
-          <h1 className={`text-4xl font-bold mb-2 ${content.color}`}>
-            {content.title}
-          </h1>
+          <div className="flex justify-center mb-4">{content.icon}</div>
+          <h1 className={`text-4xl font-bold mb-2 ${content.color}`}>{content.title}</h1>
           <p className="text-text-muted">{content.subtitle}</p>
+          {reason && reasonText[reason] && (
+            <p className="text-sm text-text-muted mt-1">{reasonText[reason]}</p>
+          )}
         </div>
 
-        {/* ELO change */}
         <div className="bg-surface border-x border-line p-6">
           <div className="flex items-center justify-center gap-4">
             <div className="text-center">
-              <p className="text-sm text-text-muted mb-1">Before</p>
-              <p className="text-2xl font-mono">{oldRank}</p>
+              <p className="text-sm text-text-muted mb-1">White</p>
+              <p className="text-lg font-medium truncate max-w-24">
+                {room?.players.white?.displayName ?? '—'}
+              </p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-3xl">{result === 'win' ? '→' : result === 'loss' ? '←' : '↔'}</span>
-              <div className={`
-                px-4 py-2 rounded-lg font-bold
-                ${result === 'win' ? 'bg-card-green/20 text-card-green' : ''}
-                ${result === 'loss' ? 'bg-danger/20 text-danger' : ''}
-                ${result === 'draw' ? 'bg-card-silver/20 text-card-silver' : ''}
-              `}>
-                {result === 'win' ? '+' : ''}{eloChange}
-              </div>
-            </div>
-
+            <span className="text-2xl text-text-muted">
+              {outcome === 'draw' ? '↔' : '—'}
+            </span>
             <div className="text-center">
-              <p className="text-sm text-text-muted mb-1">After</p>
-              <p className="text-2xl font-mono font-bold">
-                <span className={result === 'win' ? 'text-card-green' : result === 'loss' ? 'text-danger' : 'text-card-silver'}>
-                  {newRank}
-                </span>
+              <p className="text-sm text-text-muted mb-1">Black</p>
+              <p className="text-lg font-medium truncate max-w-24">
+                {room?.players.black?.displayName ?? '—'}
               </p>
             </div>
           </div>
 
-          {/* Star badge for win */}
-          {result === 'win' && (
-            <div className="flex justify-center mt-4">
-              <Badge variant="gold" className="px-4 py-2 text-sm">
-                <Star className="w-4 h-4 mr-1" />
-                Rating increased!
-              </Badge>
-            </div>
-          )}
-
-          {/* Saving indicator */}
-          {isSaving && (
-            <p className="text-center text-xs text-text-muted mt-2">
-              Saving to your profile...
-            </p>
-          )}
-        </div>
-
-        {/* Match stats */}
-        <div className="bg-surface border-x border-line p-6">
-          <h3 className="text-sm font-semibold text-text-muted mb-4 text-center">
-            Match Statistics
-          </h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-mono">{formatDuration(duration)}</p>
-              <p className="text-xs text-text-muted">Duration</p>
-            </div>
-            <div>
-              <p className="text-2xl font-mono">{moveCount}</p>
-              <p className="text-xs text-text-muted">Moves</p>
-            </div>
-            <div>
-              <p className="text-2xl font-mono">{cardsUsed}/{totalCards}</p>
-              <p className="text-xs text-text-muted">Cards Used</p>
-            </div>
+          <div className="flex justify-center mt-4">
+            <Badge variant={outcome === 'win' ? 'gold' : 'default'}>
+              {moveCount} moves
+            </Badge>
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="bg-surface border border-line rounded-b-2xl p-6 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="secondary"
-              className="h-12"
-              onClick={() => {
-                alert('Replay feature coming soon!');
-              }}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Review
-            </Button>
-            <Button
-              variant="secondary"
-              className="h-12"
-              onClick={() => setScreen('matchmaking')}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Rematch
-            </Button>
-          </div>
           <Button
-            className="w-full h-12 text-lg"
-            onClick={() => setScreen('lobby')}
+            variant="secondary"
+            className="w-full h-12"
+            onClick={() => navigate(`/match/${roomId}`)}
           >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Review the board
+          </Button>
+          <Button className="w-full h-12 text-lg" onClick={() => navigate('/lobby')}>
             <Home className="w-5 h-5 mr-2" />
             Back to Lobby
           </Button>
         </div>
 
-        {/* Footer tips */}
         <p className="text-center text-xs text-text-muted mt-6">
-          Tip: Practice your openings in the card collection!
+          Playing as {profile?.displayName ?? 'guest'}.
         </p>
       </div>
     </div>
   );
-}
-
-// Wrapper that gets data from Firebase profile
-export function ResultScreenWrapper() {
-  const { profile } = useAuth();
-
-  // Get current rank from profile
-  const currentRank = profile?.rankCard || profile?.rankClassic || 1200;
-  const eloChange = 15;
-  const newRank = currentRank + eloChange;
-
-  // Mock data - in real app this would come from match result
-  const mockResult = {
-    result: 'win' as const,
-    eloChange,
-    oldRank: currentRank,
-    newRank,
-    duration: 272,
-    moveCount: 24,
-    cardsUsed: 2,
-    totalCards: 3,
-    gameMode: 'card' as const,
-  };
-
-  return <ResultScreen {...mockResult} />;
 }
