@@ -1,0 +1,470 @@
+{
+  "Chess-Game/database.rules.json": {
+    "mtime": 1794818710.3829913,
+    "seen": 1794822969.0748374,
+    "ast_hash": "9d61e740cfe44f6a4f094ba28f6ee808",
+    "semantic_hash": "9d61e740cfe44f6a4f094ba28f6ee808"
+  },
+  "Chess-Game/eslint.config.js": {
+    "mtime": 1791727544.5505855,
+    "seen": 1794822969.0748432,
+    "ast_hash": "0355276bc79439afe3c53e3a2470ca1e",
+    "semantic_hash": "0355276bc79439afe3c53e3a2470ca1e"
+  },
+  "Chess-Game/firebase.json": {
+    "mtime": 1794041769.188143,
+    "seen": 1794822969.0748458,
+    "ast_hash": "83799ed8fdd27a375e348ede2b000eed",
+    "semantic_hash": "83799ed8fdd27a375e348ede2b000eed"
+  },
+  "Chess-Game/package.json": {
+    "mtime": 1794041780.519207,
+    "seen": 1794822969.0748467,
+    "ast_hash": "b0c4416a5a33bb2b180b3ae3b0495ea3",
+    "semantic_hash": "b0c4416a5a33bb2b180b3ae3b0495ea3"
+  },
+  "Chess-Game/scripts/generate-pieces.mjs": {
+    "mtime": 1794033804.5629287,
+    "seen": 1794822969.0748477,
+    "ast_hash": "fc2466a4cf028a9e37b13365dc85f304",
+    "semantic_hash": "fc2466a4cf028a9e37b13365dc85f304"
+  },
+  "Chess-Game/skills-lock.json": {
+    "mtime": 1794025078.724523,
+    "seen": 1794822969.0748487,
+    "ast_hash": "65132963e54925111033ee0ca0c8420f",
+    "semantic_hash": "65132963e54925111033ee0ca0c8420f"
+  },
+  "Chess-Game/src/App.tsx": {
+    "mtime": 1794045207.7564566,
+    "seen": 1794822969.0748498,
+    "ast_hash": "879e9dc997292a9a7c36b8cfaab821c1",
+    "semantic_hash": "879e9dc997292a9a7c36b8cfaab821c1"
+  },
+  "Chess-Game/src/components/common/LoadingAnimation.tsx": {
+    "mtime": 1794033874.662082,
+    "seen": 1794822969.0748506,
+    "ast_hash": "f8491ec4141973e22c09cc4a881885b2",
+    "semantic_hash": "f8491ec4141973e22c09cc4a881885b2"
+  },
+  "Chess-Game/src/components/hud/MoveLog.tsx": {
+    "mtime": 1794033988.876714,
+    "seen": 1794822969.0748513,
+    "ast_hash": "06329409e809b7942d26596bfaa89336",
+    "semantic_hash": "06329409e809b7942d26596bfaa89336"
+  },
+  "Chess-Game/src/components/ui/Button.tsx": {
+    "mtime": 1791788874.5540519,
+    "seen": 1794822969.074852,
+    "ast_hash": "0af77f7e9b2163e1b3fb21d373c5df6c",
+    "semantic_hash": "0af77f7e9b2163e1b3fb21d373c5df6c"
+  },
+  "Chess-Game/src/components/ui/Card.tsx": {
+    "mtime": 1791788904.3676584,
+    "seen": 1794822969.074853,
+    "ast_hash": "3a56e9d85da731538eb58eb1d620a211",
+    "semantic_hash": "3a56e9d85da731538eb58eb1d620a211"
+  },
+  "Chess-Game/src/components/ui/Dialog.tsx": {
+    "mtime": 1791788935.2053697,
+    "seen": 1794822969.0748541,
+    "ast_hash": "caf2e7b5fed6927a528df8127ddb5db0",
+    "semantic_hash": "caf2e7b5fed6927a528df8127ddb5db0"
+  },
+  "Chess-Game/src/components/ui/Input.tsx": {
+    "mtime": 1791865270.148918,
+    "seen": 1794822969.0748549,
+    "ast_hash": "f0a62d89772e66a0bea3fc61edc552e6",
+    "semantic_hash": "f0a62d89772e66a0bea3fc61edc552e6"
+  },
+  "Chess-Game/src/components/ui/ScrollArea.tsx": {
+    "mtime": 1791789513.339839,
+    "seen": 1794822969.074856,
+    "ast_hash": "667126519a5dcac0fe9eb85998688719",
+    "semantic_hash": "667126519a5dcac0fe9eb85998688719"
+  },
+  "Chess-Game/src/contexts/AuthContext.tsx": {
+    "mtime": 1794045482.248438,
+    "seen": 1794822969.0748568,
+    "ast_hash": "cfe9698f711704fa0956664df9c226ac",
+    "semantic_hash": "cfe9698f711704fa0956664df9c226ac"
+  },
+  "Chess-Game/src/contexts/authContextDefinition.ts": {
+    "mtime": 1794045094.5876105,
+    "seen": 1794822969.0748575,
+    "ast_hash": "36c6a3ba0c34e5de555dac2adf84488b",
+    "semantic_hash": "36c6a3ba0c34e5de555dac2adf84488b"
+  },
+  "Chess-Game/src/contexts/useAuth.ts": {
+    "mtime": 1794045107.517483,
+    "seen": 1794822969.0748584,
+    "ast_hash": "ae2ca1af760f3bc2dc0d18c0e19eae55",
+    "semantic_hash": "ae2ca1af760f3bc2dc0d18c0e19eae55"
+  },
+  "Chess-Game/src/engine/core/IChessEngine.ts": {
+    "mtime": 1794031219.1717837,
+    "seen": 1794822969.0748594,
+    "ast_hash": "984117cbc8814eab838b88c5f67b3476",
+    "semantic_hash": "984117cbc8814eab838b88c5f67b3476"
+  },
+  "Chess-Game/src/engine/core/StandardEngine.ts": {
+    "mtime": 1794033041.5883765,
+    "seen": 1794822969.07486,
+    "ast_hash": "21764b4c326bfe644227260b1c7ed44f",
+    "semantic_hash": "21764b4c326bfe644227260b1c7ed44f"
+  },
+  "Chess-Game/src/engine/engine.test.ts": {
+    "mtime": 1794033538.8470404,
+    "seen": 1794822969.0748608,
+    "ast_hash": "85cbe9e504b7bb9701181b60fa645cb6",
+    "semantic_hash": "85cbe9e504b7bb9701181b60fa645cb6"
+  },
+  "Chess-Game/src/engine/grid/BoardGrid10x10.ts": {
+    "mtime": 1794031885.1382017,
+    "seen": 1794822969.0748618,
+    "ast_hash": "c13e5f5967c1796b15d745a9740c1533",
+    "semantic_hash": "c13e5f5967c1796b15d745a9740c1533"
+  },
+  "Chess-Game/src/engine/grid/board.ts": {
+    "mtime": 1794032306.6086175,
+    "seen": 1794822969.0748625,
+    "ast_hash": "14182aa5f25e5d108f44258cab0f895e",
+    "semantic_hash": "14182aa5f25e5d108f44258cab0f895e"
+  },
+  "Chess-Game/src/engine/grid/constants.ts": {
+    "mtime": 1794031862.4230413,
+    "seen": 1794822969.0748637,
+    "ast_hash": "b10f929a10d23513c1e7e10f159ae901",
+    "semantic_hash": "b10f929a10d23513c1e7e10f159ae901"
+  },
+  "Chess-Game/src/engine/grid/coords.ts": {
+    "mtime": 1794032411.533854,
+    "seen": 1794822969.0748646,
+    "ast_hash": "6fb57d98d749f295b8257ef040a2c554",
+    "semantic_hash": "6fb57d98d749f295b8257ef040a2c554"
+  },
+  "Chess-Game/src/engine/grid/initialBoard.ts": {
+    "mtime": 1794032330.51241,
+    "seen": 1794822969.0748653,
+    "ast_hash": "c08faffe885b49675ab20d71cfddfce8",
+    "semantic_hash": "c08faffe885b49675ab20d71cfddfce8"
+  },
+  "Chess-Game/src/engine/index.ts": {
+    "mtime": 1794043947.944754,
+    "seen": 1794822969.0748663,
+    "ast_hash": "b5d8abdc0a863236a492fc09159ce57e",
+    "semantic_hash": "b5d8abdc0a863236a492fc09159ce57e"
+  },
+  "Chess-Game/src/engine/move.test.ts": {
+    "mtime": 1794043842.5574083,
+    "seen": 1794822969.0748672,
+    "ast_hash": "225fbe1b0fadebe7fae021cecfd355cf",
+    "semantic_hash": "225fbe1b0fadebe7fae021cecfd355cf"
+  },
+  "Chess-Game/src/features/auth/LoginScreen.tsx": {
+    "mtime": 1794045302.8703413,
+    "seen": 1794822969.074868,
+    "ast_hash": "7822d42382a029d164062ab8632ee6a1",
+    "semantic_hash": "7822d42382a029d164062ab8632ee6a1"
+  },
+  "Chess-Game/src/features/board/components/BoardGrid.tsx": {
+    "mtime": 1794040841.1296718,
+    "seen": 1794822969.0748687,
+    "ast_hash": "53b142276d21404d2e03b2b6e7e4bccc",
+    "semantic_hash": "53b142276d21404d2e03b2b6e7e4bccc"
+  },
+  "Chess-Game/src/features/board/components/Piece.tsx": {
+    "mtime": 1794044715.8117352,
+    "seen": 1794822969.0748694,
+    "ast_hash": "5d7e4a932aab0a06d6015f2f104d2391",
+    "semantic_hash": "5d7e4a932aab0a06d6015f2f104d2391"
+  },
+  "Chess-Game/src/features/board/components/pieceImages.ts": {
+    "mtime": 1794044501.699493,
+    "seen": 1794822969.0748703,
+    "ast_hash": "a1d4cf38923aecc5a4e6c94906bd2831",
+    "semantic_hash": "a1d4cf38923aecc5a4e6c94906bd2831"
+  },
+  "Chess-Game/src/features/lobby/LobbyScreen.tsx": {
+    "mtime": 1794045314.0359137,
+    "seen": 1794822969.0748713,
+    "ast_hash": "d2bd12b4a762e164b849af45a8dbd568",
+    "semantic_hash": "d2bd12b4a762e164b849af45a8dbd568"
+  },
+  "Chess-Game/src/features/match/MatchScreen.tsx": {
+    "mtime": 1794820833.6715362,
+    "seen": 1794822969.074872,
+    "ast_hash": "30b6fba333a87541cd1efd26ce08d112",
+    "semantic_hash": "30b6fba333a87541cd1efd26ce08d112"
+  },
+  "Chess-Game/src/features/match/components/CardTray.tsx": {
+    "mtime": 1791790505.352593,
+    "seen": 1794822969.0748727,
+    "ast_hash": "4485c9ec96a5d3f82a659beb6854d4b6",
+    "semantic_hash": "4485c9ec96a5d3f82a659beb6854d4b6"
+  },
+  "Chess-Game/src/features/match/components/ClockDisplay.tsx": {
+    "mtime": 1794045065.5418663,
+    "seen": 1794822969.0748737,
+    "ast_hash": "b069fb93bf6e6e0c4e812aa4724b6f84",
+    "semantic_hash": "b069fb93bf6e6e0c4e812aa4724b6f84"
+  },
+  "Chess-Game/src/features/result/ResultScreen.tsx": {
+    "mtime": 1794820001.0248964,
+    "seen": 1794822969.0748746,
+    "ast_hash": "6cc4ca16e17a1a1204b7dca7b8413287",
+    "semantic_hash": "6cc4ca16e17a1a1204b7dca7b8413287"
+  },
+  "Chess-Game/src/features/room/CreateRoomScreen.tsx": {
+    "mtime": 1794045316.8144417,
+    "seen": 1794822969.0748754,
+    "ast_hash": "89998254c1dd3922d62a243be16be736",
+    "semantic_hash": "89998254c1dd3922d62a243be16be736"
+  },
+  "Chess-Game/src/features/room/JoinRoomScreen.tsx": {
+    "mtime": 1794045317.7669692,
+    "seen": 1794822969.074876,
+    "ast_hash": "afa3118e1bf43e4c4f3ebbdf8c908def",
+    "semantic_hash": "afa3118e1bf43e4c4f3ebbdf8c908def"
+  },
+  "Chess-Game/src/features/room/WaitingRoomScreen.tsx": {
+    "mtime": 1794045318.663061,
+    "seen": 1794822969.074877,
+    "ast_hash": "62bc6a10c80c384ef4771c4807c4fc79",
+    "semantic_hash": "62bc6a10c80c384ef4771c4807c4fc79"
+  },
+  "Chess-Game/src/hooks/useGameSync.ts": {
+    "mtime": 1794044990.249694,
+    "seen": 1794822969.074878,
+    "ast_hash": "6fcf8f7ca2448893e763a511e08d3d9f",
+    "semantic_hash": "6fcf8f7ca2448893e763a511e08d3d9f"
+  },
+  "Chess-Game/src/hooks/usePointerField.ts": {
+    "mtime": 1794041094.9732964,
+    "seen": 1794822969.0748787,
+    "ast_hash": "d56e3ca2be735d8b1f369184ffdb2689",
+    "semantic_hash": "d56e3ca2be735d8b1f369184ffdb2689"
+  },
+  "Chess-Game/src/hooks/useTimer.ts": {
+    "mtime": 1794044230.8295844,
+    "seen": 1794822969.0748794,
+    "ast_hash": "1c58433b5fe36d2404c17b7e51608baa",
+    "semantic_hash": "1c58433b5fe36d2404c17b7e51608baa"
+  },
+  "Chess-Game/src/lib/audio.ts": {
+    "mtime": 1794033875.5017488,
+    "seen": 1794822969.0748806,
+    "ast_hash": "1b844a38efea6b66e68680f326832631",
+    "semantic_hash": "1b844a38efea6b66e68680f326832631"
+  },
+  "Chess-Game/src/lib/firebase.ts": {
+    "mtime": 1791805630.3035905,
+    "seen": 1794822969.0748816,
+    "ast_hash": "389d8c58b68442731ab774d351383b3e",
+    "semantic_hash": "389d8c58b68442731ab774d351383b3e"
+  },
+  "Chess-Game/src/main.tsx": {
+    "mtime": 1791852668.4824395,
+    "seen": 1794822969.0748823,
+    "ast_hash": "2205b1ba7e1ba6de22afbb6e7245ca1a",
+    "semantic_hash": "2205b1ba7e1ba6de22afbb6e7245ca1a"
+  },
+  "Chess-Game/src/services/roomService.ts": {
+    "mtime": 1794821606.3237119,
+    "seen": 1794822969.074883,
+    "ast_hash": "e82fbd0ba188a1537bed79a6fb05df3d",
+    "semantic_hash": "e82fbd0ba188a1537bed79a6fb05df3d"
+  },
+  "Chess-Game/src/stores/useGameStore.ts": {
+    "mtime": 1794033974.2449663,
+    "seen": 1794822969.0748842,
+    "ast_hash": "dd69a36e0142ba7c40b802991e8f2bf5",
+    "semantic_hash": "dd69a36e0142ba7c40b802991e8f2bf5"
+  },
+  "Chess-Game/src/stores/useSettingsStore.ts": {
+    "mtime": 1794033975.1097465,
+    "seen": 1794822969.0748847,
+    "ast_hash": "de43364e5b18c8857538aca3f54590df",
+    "semantic_hash": "de43364e5b18c8857538aca3f54590df"
+  },
+  "Chess-Game/src/types/index.ts": {
+    "mtime": 1791787902.158328,
+    "seen": 1794822969.0748856,
+    "ast_hash": "b88356a98efad73dcd6774c8fe1e8bcb",
+    "semantic_hash": "b88356a98efad73dcd6774c8fe1e8bcb"
+  },
+  "Chess-Game/src/types/room.ts": {
+    "mtime": 1794042124.7652159,
+    "seen": 1794822969.0748863,
+    "ast_hash": "75dd002366e6964f12388c2b0216b98e",
+    "semantic_hash": "75dd002366e6964f12388c2b0216b98e"
+  },
+  "Chess-Game/tsconfig.app.json": {
+    "mtime": 1793980587.3975155,
+    "seen": 1794822969.0748873,
+    "ast_hash": "e4f83bdfdf660f5e5364945e14291d70",
+    "semantic_hash": "e4f83bdfdf660f5e5364945e14291d70"
+  },
+  "Chess-Game/tsconfig.json": {
+    "mtime": 1791635268.7269535,
+    "seen": 1794822969.074888,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "Chess-Game/tsconfig.node.json": {
+    "mtime": 1791635268.7279527,
+    "seen": 1794822969.074889,
+    "ast_hash": "f9cb81ddcea69ffdab672fc8c48dca66",
+    "semantic_hash": "f9cb81ddcea69ffdab672fc8c48dca66"
+  },
+  "Chess-Game/vite.config.ts": {
+    "mtime": 1794031426.1912334,
+    "seen": 1794822969.0748897,
+    "ast_hash": "5b641ab5f85eff4b0b9acec3417ca9b5",
+    "semantic_hash": "5b641ab5f85eff4b0b9acec3417ca9b5"
+  },
+  "Chess-Game/.agents/skills/frontend-design/LICENSE.txt": {
+    "mtime": 1794024868.7654707,
+    "seen": 1794822969.0748906,
+    "ast_hash": "29256199be2a609aac596980ffc11996",
+    "semantic_hash": "29256199be2a609aac596980ffc11996"
+  },
+  "Chess-Game/PLAN.md": {
+    "mtime": 1794044089.8461986,
+    "seen": 1794822969.0748913,
+    "ast_hash": "5fc3fe1a0943ac1a698b2ab8c0a2a067",
+    "semantic_hash": "5fc3fe1a0943ac1a698b2ab8c0a2a067"
+  },
+  "Chess-Game/README.md": {
+    "mtime": 1794044005.6697347,
+    "seen": 1794822969.074892,
+    "ast_hash": "a0a0a8b68233c2eb679424d728a0dc45",
+    "semantic_hash": "a0a0a8b68233c2eb679424d728a0dc45"
+  },
+  "Chess-Game/docs/chess_game_ui_design_document.md": {
+    "mtime": 1794045859.8750937,
+    "seen": 1794822969.0748928,
+    "ast_hash": "c49a8ee45036fef3bb2856fd3bbd80b7",
+    "semantic_hash": "c49a8ee45036fef3bb2856fd3bbd80b7"
+  },
+  "Chess-Game/docs/chess_system_architecture_document.md": {
+    "mtime": 1794043685.9380245,
+    "seen": 1794822969.0748935,
+    "ast_hash": "cb203ec81bb9b91eba6bcb8ada439ca0",
+    "semantic_hash": "cb203ec81bb9b91eba6bcb8ada439ca0"
+  },
+  "Chess-Game/docs/claude_agent_rules.md": {
+    "mtime": 1794024759.0504081,
+    "seen": 1794822969.0748944,
+    "ast_hash": "77ab548ede23e299df7fd6b18bbf8e92",
+    "semantic_hash": "77ab548ede23e299df7fd6b18bbf8e92"
+  },
+  "Chess-Game/docs/phase_1_project_roadmap.md": {
+    "mtime": 1794043728.6644492,
+    "seen": 1794822969.0748951,
+    "ast_hash": "1bdf40859f8452ee4ce76cb2ae1c6a19",
+    "semantic_hash": "1bdf40859f8452ee4ce76cb2ae1c6a19"
+  },
+  "Chess-Game/index.html": {
+    "mtime": 1791789747.1300273,
+    "seen": 1794822969.0748959,
+    "ast_hash": "211641596571707ec8b38dd539c57038",
+    "semantic_hash": "211641596571707ec8b38dd539c57038"
+  },
+  "Chess-Game/public/assets/pieces/black/bishop.png": {
+    "mtime": 1794033824.4158628,
+    "seen": 1794822969.0748968,
+    "ast_hash": "c78cde74ea7b04d7dc1ecc120b269d31",
+    "semantic_hash": "c78cde74ea7b04d7dc1ecc120b269d31"
+  },
+  "Chess-Game/public/assets/pieces/black/king.png": {
+    "mtime": 1794033824.5332556,
+    "seen": 1794822969.0748978,
+    "ast_hash": "c62d117fa9522a3f30d449718bf9c049",
+    "semantic_hash": "c62d117fa9522a3f30d449718bf9c049"
+  },
+  "Chess-Game/public/assets/pieces/black/knight.png": {
+    "mtime": 1794033824.3817792,
+    "seen": 1794822969.0748987,
+    "ast_hash": "94300fff2e951dc9db67fcda80c82adc",
+    "semantic_hash": "94300fff2e951dc9db67fcda80c82adc"
+  },
+  "Chess-Game/public/assets/pieces/black/pawn.png": {
+    "mtime": 1794033824.3486955,
+    "seen": 1794822969.0748994,
+    "ast_hash": "9124e50faae07097683602e9286c4ed7",
+    "semantic_hash": "9124e50faae07097683602e9286c4ed7"
+  },
+  "Chess-Game/public/assets/pieces/black/queen.png": {
+    "mtime": 1794033824.4961238,
+    "seen": 1794822969.0749004,
+    "ast_hash": "7735eb21ac630f4c2c7ddbfb51eafb10",
+    "semantic_hash": "7735eb21ac630f4c2c7ddbfb51eafb10"
+  },
+  "Chess-Game/public/assets/pieces/black/rook.png": {
+    "mtime": 1794033824.4520223,
+    "seen": 1794822969.0749016,
+    "ast_hash": "45471194e41e12c5b42ceb704e858616",
+    "semantic_hash": "45471194e41e12c5b42ceb704e858616"
+  },
+  "Chess-Game/public/assets/pieces/white/bishop.png": {
+    "mtime": 1794033824.1342478,
+    "seen": 1794822969.0749023,
+    "ast_hash": "c048b0fa030db8d8b1077cfe48d931e2",
+    "semantic_hash": "c048b0fa030db8d8b1077cfe48d931e2"
+  },
+  "Chess-Game/public/assets/pieces/white/king.png": {
+    "mtime": 1794033824.3034923,
+    "seen": 1794822969.074903,
+    "ast_hash": "cd6a1f1410215a63c603323829414155",
+    "semantic_hash": "cd6a1f1410215a63c603323829414155"
+  },
+  "Chess-Game/public/assets/pieces/white/knight.png": {
+    "mtime": 1794033824.0678031,
+    "seen": 1794822969.0749037,
+    "ast_hash": "37bca428dcdd41276ac456a7f29231c3",
+    "semantic_hash": "37bca428dcdd41276ac456a7f29231c3"
+  },
+  "Chess-Game/public/assets/pieces/white/pawn.png": {
+    "mtime": 1794033824.020089,
+    "seen": 1794822969.074905,
+    "ast_hash": "8450423ab2bd71cb7e12b87e6c5dad4f",
+    "semantic_hash": "8450423ab2bd71cb7e12b87e6c5dad4f"
+  },
+  "Chess-Game/public/assets/pieces/white/queen.png": {
+    "mtime": 1794033824.25069,
+    "seen": 1794822969.0749059,
+    "ast_hash": "a86fc5f9982c69673319d6a922b1d158",
+    "semantic_hash": "a86fc5f9982c69673319d6a922b1d158"
+  },
+  "Chess-Game/public/assets/pieces/white/rook.png": {
+    "mtime": 1794033824.1954472,
+    "seen": 1794822969.0749066,
+    "ast_hash": "84f6392318a0d9d56a18f16bd8b0e371",
+    "semantic_hash": "84f6392318a0d9d56a18f16bd8b0e371"
+  },
+  "Chess-Game/public/favicon.svg": {
+    "mtime": 1791635268.7167692,
+    "seen": 1794822969.0749073,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": "7e840862161341271697daa99a40d76b"
+  },
+  "Chess-Game/src/assets/hero.png": {
+    "mtime": 1791635268.720769,
+    "seen": 1794822969.0749085,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "Chess-Game/src/assets/react.svg": {
+    "mtime": 1791635268.7217686,
+    "seen": 1794822969.0749092,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": "f0402b67b6ce880f65666bb49e841696"
+  },
+  "Chess-Game/src/assets/vite.svg": {
+    "mtime": 1791635268.7227695,
+    "seen": 1794822969.0749102,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}
