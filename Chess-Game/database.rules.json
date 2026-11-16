@@ -2,83 +2,38 @@
   "rules": {
     ".read": false,
     ".write": false,
-
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-
+        ".write": "auth != null && (!data.exists() || (!newData.exists() && data.child('metadata/status').val() === 'waiting' && (data.child('players/white/uid').val() === auth.uid || data.child('players/black/uid').val() === auth.uid)))",
         "metadata": {
-          ".write": "auth != null && (
-            !data.exists() ||
-            root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
-            root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
-          )",
+          ".write": "auth != null && (!data.exists() || root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)",
           ".validate": "newData.hasChildren(['createdAt', 'status', 'mode', 'timeControl'])"
         },
-
         "players": {
-          ".write": "auth != null && (
-            !data.exists() ||
-            root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
-            root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
-          )",
-
+          ".write": "auth != null && (!data.exists() || root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)",
           "white": {
-            ".write": "auth != null && (
-              !data.exists() ||
-              data.child('uid').val() === auth.uid
-            )"
+            ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)"
           },
-
           "black": {
-            ".write": "auth != null && (
-              !data.exists() ||
-              data.child('uid').val() === auth.uid
-            )"
+            ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)"
           }
         },
-
         "boardState": {
-          ".write": "auth != null && (
-            (
-              !data.exists() &&
-              root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid
-            ) || (
-              data.child('turn').val() === 'white' &&
-              root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid &&
-              newData.child('turn').val() === 'black'
-            ) || (
-              data.child('turn').val() === 'black' &&
-              root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid &&
-              newData.child('turn').val() === 'white'
-            )
-          )",
-          ".validate": "!newData.exists() || (
-            newData.hasChildren(['fen', 'turn']) &&
-            (newData.child('turn').val() === 'white' || newData.child('turn').val() === 'black') &&
-            newData.child('fen').isString()
-          )"
+          ".write": "auth != null && ((!data.exists() && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) || (data.child('turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid && newData.child('turn').val() === 'black') || (data.child('turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid && newData.child('turn').val() === 'white'))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['fen', 'turn']) && (newData.child('turn').val() === 'white' || newData.child('turn').val() === 'black') && newData.child('fen').isString())"
         },
-
         "moveHistory": {
           "$moveId": {
-            ".write": "auth != null && (
-              root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
-              root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
-            ) && newData.child('by').val() === auth.uid",
+            ".write": "auth != null && (root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid) && newData.child('by').val() === auth.uid",
             ".validate": "newData.hasChildren(['from', 'to', 'san', 'timestamp'])"
           }
         },
-
         "cardState": {
-          ".write": "auth != null && (
-            root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
-            root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
-          )"
+          ".write": "auth != null && (root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)"
         }
       }
     },
-
     "presence": {
       "$uid": {
         ".read": "auth != null",

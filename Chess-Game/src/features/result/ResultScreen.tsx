@@ -131,7 +131,7 @@ export function ResultScreen() {
     },
   }[outcome];
 
-  const moveCount = room ? Object.keys(room.moveHistory).length : 0;
+  const moveCount = room ? Object.keys(room.moveHistory ?? {}).length : 0;
   const reason = room?.metadata.terminationReason;
 
   const reasonText: Record<string, string> = {

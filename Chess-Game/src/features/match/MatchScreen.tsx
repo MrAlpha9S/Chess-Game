@@ -132,15 +132,15 @@ export function MatchScreen() {
     }
   }, [isGameOver, room, navigate, roomId]);
 
-  const moveHistory = room?.moveHistory;
-
+  // Firebase omits empty objects, so a room can have no moveHistory field
+  // until its first move.
   const moves = useMemo(() => {
-    if (!moveHistory) return [];
+    const moveHistory = room?.moveHistory ?? {};
     return Object.keys(moveHistory)
       .map(Number)
       .sort((a, b) => a - b)
       .map((key) => moveHistory[String(key)]);
-  }, [moveHistory]);
+  }, [room?.moveHistory]);
 
   /** The legal destinations of the selected square. */
   const computeValidMoves = useCallback(

@@ -16,6 +16,7 @@ import {
   applyMoveToState,
   createInitialGameState,
   gameStateFromFen,
+  type GameOutcome,
   type MoveRequest,
 } from '../engine';
 import {
@@ -28,6 +29,20 @@ import {
   type RoomTimeControl,
   type TerminationReason,
 } from '../types/room';
+
+/** Convert the engine's outcome names to the RTDB room schema. */
+function toTerminationReason(outcome: Exclude<GameOutcome, 'ongoing'>): TerminationReason {
+  switch (outcome) {
+    case 'insufficientMaterial':
+      return 'insufficient_material';
+    case 'fiftyMoveRule':
+      return 'fifty_move_rule';
+    case 'threefoldRepetition':
+      return 'threefold_repetition';
+    default:
+      return outcome;
+  }
+}
 
 /** The identity of a player joining a room. */
 export interface RoomPlayerIdentity {
@@ -160,9 +175,12 @@ class RoomService {
       timeRemainingMs: room.metadata.timeControl.initialMs,
     };
 
+    // Only claim the empty black seat here. Updating metadata in the same
+    // patch would be rejected by the rules: while evaluating
+    // `metadata/updatedAt`, the existing room still has no black player, so
+    // Firebase cannot identify the joining user as a room member yet.
     await update(this.roomRef(roomId), {
       'players/black': black,
-      'metadata/updatedAt': Date.now(),
     });
   }
 
@@ -239,26 +257,55 @@ class RoomService {
       throw new Error(applied.reason);
     }
 
-    const moveNumber = Object.keys(room.moveHistory).length;
+    // Realtime Database strips empty objects: a freshly created room has no
+    // `moveHistory` key until the first move is written, so it is read with
+    // a fallback.
+    const moveNumber = Object.keys(room.moveHistory ?? {}).length;
     const move: RoomMove = {
       from: request.from,
       to: request.to,
       san: applied.result.san,
       type: applied.result.capturedPiece ? 'capture' : 'move',
-      promotion: request.promotion,
       by: playerUid,
       timestamp: Date.now(),
+      // Realtime Database rejects `undefined` anywhere in the payload, so
+      // the promotion piece is only present when the move actually has one.
+      ...(request.promotion ? { promotion: request.promotion } : {}),
     };
 
     const patch: Record<string, unknown> = {
       boardState: {
         ...applied.state,
         lastMove: move,
-        gridConfig: room.boardState.gridConfig,
-        variantState: room.boardState.variantState,
+        // RTDB omits empty arrays/objects when reading. Reconstruct the
+        // Phase 1 containers instead of echoing possibly-undefined fields
+        // from the read-back room.
+        gridConfig: {
+          minRow: room.boardState.gridConfig?.minRow ?? createPhase1GridConfig().minRow,
+          maxRow: room.boardState.gridConfig?.maxRow ?? createPhase1GridConfig().maxRow,
+          minCol: room.boardState.gridConfig?.minCol ?? createPhase1GridConfig().minCol,
+          maxCol: room.boardState.gridConfig?.maxCol ?? createPhase1GridConfig().maxCol,
+          holes: room.boardState.gridConfig?.holes ?? [],
+        },
+        variantState: {
+          royalTag: {
+            white: room.boardState.variantState?.royalTag?.white ?? null,
+            black: room.boardState.variantState?.royalTag?.black ?? null,
+          },
+          hiddenPieces: room.boardState.variantState?.hiddenPieces ?? {},
+          activeBarriers: room.boardState.variantState?.activeBarriers ?? [],
+        },
       },
       [`moveHistory/${moveNumber}`]: move,
       'metadata/updatedAt': Date.now(),
+      ...(applied.state.outcome !== 'ongoing'
+        ? {
+            'metadata/status': 'completed',
+            'metadata/winner':
+              applied.state.outcome === 'checkmate' ? color : 'draw',
+            'metadata/terminationReason': toTerminationReason(applied.state.outcome),
+          }
+        : {}),
     };
 
     // The clock is written in the same patch, so the time the player had left
@@ -313,7 +360,13 @@ class RoomService {
     await this.finish(roomId, 'draw', 'draw_agreement');
   }
 
-  /** End the game with the given outcome. */
+  /**
+   * End the game with the given outcome.
+   *
+   * The UI reads the result from `metadata.status`, so no board state write
+   * is needed here. The board rules would reject it anyway: they require
+   * the turn to flip, and finishing the game leaves the turn unchanged.
+   */
   private async finish(
     roomId: string,
     winner: 'white' | 'black' | 'draw',
@@ -324,7 +377,6 @@ class RoomService {
       'metadata/winner': winner,
       'metadata/terminationReason': reason,
       'metadata/updatedAt': Date.now(),
-      'boardState/isGameOver': true,
     });
   }
 
