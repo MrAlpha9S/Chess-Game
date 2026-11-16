@@ -1,6 +1,8 @@
 import { memo } from 'react';
 import { Piece } from './Piece';
 import {
+  ACTIVE_MAX_COL,
+  ACTIVE_MAX_ROW,
   ACTIVE_MIN_COL,
   ACTIVE_MIN_ROW,
   gridToAlgebraic,
@@ -112,9 +114,13 @@ function BoardGridComponent({
             style={{ containerType: 'size' }}
           >
             {ranks.map((_, ar) => {
-              const rowIdx = ACTIVE_MIN_ROW + ar;
+              // When the board is flipped the top display row is the far
+              // back rank (white's), so grid rows run 8→1 instead of 1→8;
+              // the same for files. This rotates the view 180° while the
+              // labels above already run in the reversed order.
+              const rowIdx = isFlipped ? ACTIVE_MAX_ROW - ar : ACTIVE_MIN_ROW + ar;
               return files.map((_, ac) => {
-                const colIdx = ACTIVE_MIN_COL + ac;
+                const colIdx = isFlipped ? ACTIVE_MAX_COL - ac : ACTIVE_MIN_COL + ac;
                 const cell = board[rowIdx]?.[colIdx] ?? '';
                 const algebraic = gridToAlgebraic(rowIdx, colIdx);
 

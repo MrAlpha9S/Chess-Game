@@ -14,10 +14,17 @@ export type PieceCode = string;
 /** The colour of a piece. */
 export type PieceColor = 'white' | 'black';
 
-/** The image path for a piece. */
+/**
+ * The image path for a piece.
+ *
+ * The sprite files are named by full kind ("king.png", not "k.png"), matching
+ * what `scripts/generate-pieces.mjs` writes, so the single-letter piece code
+ * is resolved through `pieceKind` before building the path.
+ */
 export function pieceImage(piece: PieceCode): string {
   const color: PieceColor = piece[0] === 'w' ? 'white' : 'black';
-  const kind = piece[1];
+  const kind = pieceKind(piece);
+  if (!kind) return '';
   return `/assets/pieces/${color}/${kind}.png`;
 }
 
