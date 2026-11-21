@@ -4,7 +4,8 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/useAuth';
 import { useGameStore } from '../../stores/useGameStore';
 import { roomService } from '../../services/roomService';
-import { ArrowLeft, Clock, Sword } from 'lucide-react';
+import type { RoomMode } from '../../types/room';
+import { ArrowLeft, Clock, Sparkles, Sword } from 'lucide-react';
 
 export function CreateRoomScreen() {
   const { user, profile } = useAuth();
@@ -13,6 +14,7 @@ export function CreateRoomScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mode, setMode] = useState<RoomMode>('classic');
 
   const handleCreate = async () => {
     if (!user) {
@@ -32,6 +34,7 @@ export function CreateRoomScreen() {
           rank: profile?.rankClassic ?? 1200,
         },
         { initialMs: selectedTimeControlMs, incrementMs: selectedIncrementMs },
+        mode,
       );
 
       navigate(`/room/${roomId}`);
@@ -61,6 +64,43 @@ export function CreateRoomScreen() {
           </div>
           <h1 className="text-2xl font-bold">Create Room</h1>
           <p className="text-text-muted mt-2">Create a private room and invite a friend</p>
+        </div>
+
+        {/* Game Mode */}
+        <div className="bg-surface-raised rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-text-muted">
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm">Game Mode</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setMode('classic')}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                mode === 'classic'
+                  ? 'bg-card-blue/20 border-card-blue text-card-blue'
+                  : 'border-line text-text-muted hover:bg-surface-raised'
+              }`}
+            >
+              Classic
+            </button>
+            <button
+              onClick={() => setMode('card')}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                mode === 'card'
+                  ? 'bg-card-purple/20 border-card-purple text-card-purple'
+                  : 'border-line text-text-muted hover:bg-surface-raised'
+              }`}
+            >
+              Card Chess
+            </button>
+          </div>
+          {mode === 'card' && (
+            <p className="text-xs text-text-muted mt-3">
+              Each player picks up to 3 cards before the game (30 seconds).
+            </p>
+          )}
         </div>
 
         {/* Time Control */}

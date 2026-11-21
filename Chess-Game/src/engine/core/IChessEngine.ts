@@ -19,6 +19,15 @@ export interface MoveRequest {
   to: string;
   /** Promotion piece, required when a pawn reaches the last rank. */
   promotion?: PromotionPiece;
+  /**
+   * A card effect requested together with the move (Phase 2). The card
+   * interface is in place but no classic move carries one; variant engines
+   * read it to apply the effect in the same action.
+   */
+  cardPayload?: {
+    cardId: string;
+    targetSquare?: string;
+  };
 }
 
 /** How a game ended. */
@@ -58,6 +67,16 @@ export interface MoveResult {
   errorReason?: string;
 }
 
+/** The result of using a card (Phase 2). */
+export interface CardResult {
+  /** False when the card was rejected; `errorReason` then explains why. */
+  isValid: boolean;
+  /** The card id that was used. */
+  cardId: string;
+  /** Why the card was rejected. */
+  errorReason?: string;
+}
+
 /**
  * The contract every engine — classic or variant — fulfils.
  */
@@ -68,6 +87,10 @@ export interface IChessEngine {
   getLegalMoves(square: string): string[];
   /** Attempt a move. */
   makeMove(request: MoveRequest): MoveResult;
+  /** Use a card this side holds. The classic engine rejects all cards. */
+  useCard(cardId: string): CardResult;
+  /** True when the given square is affected by an active card effect. */
+  hasCardEffect(square: string): boolean;
   /** The current position in FEN. */
   getFen(): string;
   /** The side to move. */

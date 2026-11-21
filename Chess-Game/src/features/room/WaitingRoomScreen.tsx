@@ -36,6 +36,12 @@ export function WaitingRoomScreen() {
       }
       setRoom(updated);
 
+      // Card mode: both players pick cards before the board.
+      if (updated.metadata.status === 'card_select') {
+        navigate(`/card-select/${roomId}`);
+        return;
+      }
+
       // The game has started: move on to the board.
       if (updated.metadata.status === 'in_progress') {
         navigate(`/match/${roomId}`);

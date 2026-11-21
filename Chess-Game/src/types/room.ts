@@ -14,7 +14,7 @@ import {
 } from '../engine/grid/constants';
 
 /** The lifecycle of a room. */
-export type RoomStatus = 'waiting' | 'prep_phase' | 'in_progress' | 'completed';
+export type RoomStatus = 'waiting' | 'card_select' | 'in_progress' | 'completed';
 
 /** How a game ended. */
 export type TerminationReason =
@@ -30,8 +30,8 @@ export type TerminationReason =
 /** The winner of a finished room. */
 export type RoomWinner = 'white' | 'black' | 'draw';
 
-/** The game mode. Phase 2 adds the card modes. */
-export type RoomMode = 'classic';
+/** The game mode: classic (no cards) or card (pre-match deck selection). */
+export type RoomMode = 'classic' | 'card';
 
 /** The clock settings of a room. */
 export interface RoomTimeControl {
@@ -59,6 +59,8 @@ export interface RoomMetadata {
   timeControl: RoomTimeControl;
   /** The uid of the player who offered a draw, if any. */
   drawOfferedBy?: string | null;
+  /** When the pre-match card-selection stage started, for the 30s timer. */
+  prepStartMs?: number;
 }
 
 /** One of the two players in a room. */
@@ -153,6 +155,8 @@ export interface RoomCardSide {
   used: string[];
   /** The remaining cooldown of each card, in turns. */
   cooldowns: Record<string, number>;
+  /** Whether the player pressed Ready in the pre-match selection stage. */
+  ready: boolean;
 }
 
 /** The card containers of a room, reserved for Phase 2. */
@@ -183,8 +187,8 @@ export interface PresenceRecord {
 /** The empty card state both sides start with. */
 export function createEmptyCardState(): RoomCardState {
   return {
-    white: { deck: [], used: [], cooldowns: {} },
-    black: { deck: [], used: [], cooldowns: {} },
+    white: { deck: [], used: [], cooldowns: {}, ready: false },
+    black: { deck: [], used: [], cooldowns: {}, ready: false },
   };
 }
 

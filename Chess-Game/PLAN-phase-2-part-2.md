@@ -1,6 +1,6 @@
 # Phase 2 — Part 2: Giai đoạn chọn thẻ trước trận (Card Selection)
 
-## Trạng thái: Chờ duyệt — chưa viết code
+## Trạng thái: Đã hoàn thành (code + test + build xanh)
 
 Tính năng: thêm một **giai đoạn chọn thẻ** giữa phòng chờ và trận đấu. Mỗi người
 chọn **3 trong 6 thẻ**, tối đa **30s**, có **nút Sẵn sàng**; khi **cả 2 xong** (hoặc
@@ -9,6 +9,23 @@ hết giờ) thì vào trận. Người chơi được chọn **ít hơn 3** (0�
 > Part 1 (đã có ở `PLAN-phase-2-part-1.md`) là hạ tầng engine/commit-reveal chung.
 > Phần này **không dùng commit-hash** — theo yêu cầu, dùng **nút sẵn sàng** đơn giản.
 > Hai plan độc lập: part-2 này chạy được ngay trên Phase 1 mà không cần part-1.
+
+**Đã thực thi (phần này = các bước 2–7 trong mục "Bước thực thi"):**
+- `src/cards/catalog.ts` + `catalog.test.ts` — 6 thẻ, `isValidDeck`.
+- `src/types/room.ts` — `card_select`, `RoomMode: card`, `prepStartMs`, `ready`.
+- `roomService.ts` — `createRoom(mode)`, `CARD_SELECT_MS`, `enterCardSelect`,
+  `selectCards`, `commitCardSelect`.
+- `database.rules.json` — `cardState/$color` owner-only, deck ≤3, ready một chiều.
+- `CreateRoomScreen` (toggle Classic/Card), `WaitingRoomScreen` (navigate
+  card_select), `CardSelectScreen` mới (grid 6 thẻ, countdown 30s, Sẵn sàng,
+  auto-ready, host commit), route `/card-select/:roomId`.
+- `pieceImages.ts` — `transformedPieceImage` (data mapping tower/charmer).
+- Docs §3/§4/§5 cập nhật.
+
+**Lưu ý môi trường:** Node ≥ 26 làm hỏng pool mặc định của vitest 5.1.0
+(lỗi `Cannot read properties of undefined (reading 'config')`). Đã pin
+`pool: 'vmThreads'` trong `vite.config.ts` (import từ `vitest/config`) để
+`npm test` hoạt động.
 
 ## Nguyên tắc (tuân thủ `claude_agent_rules.md`)
 

@@ -81,14 +81,15 @@ To ensure zero rewriting of the core engine when moving from Phase 1 to Phase 2:
       "metadata": {
         "createdAt": 1700000000000,
         "updatedAt": 1700000050000,
-        "status": "in_progress", // "waiting" | "prep_phase" | "in_progress" | "completed"
-        "mode": "classic",        // "classic" | "card_ranked" | "card_casual"
+        "status": "in_progress", // "waiting" | "card_select" | "in_progress" | "completed"
+        "mode": "classic",        // "classic" | "card"
         "winner": null,           // "white" | "black" | "draw" | null
         "terminationReason": null,// "checkmate" | "stalemate" | "resignation" | "timeout"
         "timeControl": {
           "initialMs": 600000,
           "incrementMs": 5000
-        }
+        },
+        "prepStartMs": 1700000040000 // Set when the room enters card_select; both clients count the 30s selection window from this shared stamp
       },
       "players": {
         "white": {
@@ -188,6 +189,9 @@ src/
 │   │   └── StandardEngine.ts      # Standard chessops Adapter (Phase 1 Engine)
 │   ├── index.ts             # Public engine API
 │   └── engine.test.ts       # Engine test suite
+├── cards/                     # Phase 2 card data (no game logic)
+│   ├── catalog.ts            # The 6-card launch pool + deck validation
+│   └── catalog.test.ts       # Catalog and deck-validation tests
 ├── features/                # Screens, grouped by feature
 │   ├── auth/LoginScreen.tsx
 │   ├── board/components/
@@ -197,9 +201,10 @@ src/
 │   ├── match/MatchScreen.tsx        # The main game screen
 │   ├── result/ResultScreen.tsx
 │   └── room/
-│       ├── CreateRoomScreen.tsx
+│       ├── CreateRoomScreen.tsx     # Mode picker: classic or card
 │       ├── JoinRoomScreen.tsx
-│       └── WaitingRoomScreen.tsx
+│       ├── WaitingRoomScreen.tsx
+│       └── CardSelectScreen.tsx     # Pre-match deck selection (card mode)
 ├── hooks/                   # Custom Hooks
 │   ├── useGameSync.ts       # RTDB room listener & dispatcher
 │   ├── useTimer.ts          # Clock synchronization hook
@@ -218,8 +223,10 @@ src/
 └── App.tsx
 ```
 
-The `variants/` folder, the card components, and the card data are Phase 2
-work and are not present in Phase 1.
+Phase 2 progress: `src/cards/catalog.ts` (card data and deck validation) and
+`src/features/room/CardSelectScreen.tsx` (pre-match deck selection) are in place.
+The `variants/` folder with in-game card effects (transformed pieces,
+summons, board reshaping) is still to come.
 
 ---
 
@@ -277,10 +284,17 @@ Firebase Realtime Database Security Rules strictly regulate game synchronization
         },
 
         "cardState": {
-          ".write": "auth != null && (
-            root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid ||
-            root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid
-          )"
+          /* Phase 2: each side's cards are only writable by that side's owner.
+             `ready` can only move false -> true (one-way). Deck length is
+             validated client-side; the emulator's rules engine does not
+             accept `numKeys`/`isList` in `.validate`, so it is not
+             re-checked at the database layer. */
+          "$color": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/players/' + $color + '/uid').val() === auth.uid",
+            "ready": {
+              ".write": "auth != null && root.child('rooms/' + $roomId + '/players/' + $color + '/uid').val() === auth.uid && (!data.exists() || data.val() !== true || newData.val() == true)"
+            }
+          }
         }
       }
     },

@@ -16,6 +16,7 @@ import { makeSan } from 'chessops/san';
 import { BoardGrid10x10 } from '../grid/BoardGrid10x10';
 import { gridToSquare, squareToGrid } from '../grid/coords';
 import type {
+  CardResult,
   Color,
   GameOutcome,
   IChessEngine,
@@ -147,6 +148,24 @@ export class StandardEngine implements IChessEngine {
 
   public getTurn(): Color {
     return this.pos.turn;
+  }
+
+  /**
+   * The classic engine has no cards: every card request is rejected. This
+   * keeps the unified contract so variant engines can be swapped in without
+   * touching the callers.
+   */
+  public useCard(cardId: string): CardResult {
+    return {
+      isValid: false,
+      cardId,
+      errorReason: 'No cards in classic mode',
+    };
+  }
+
+  /** No card effects exist in the classic game. */
+  public hasCardEffect(_square: string): boolean {
+    return false;
   }
 
   public isGameOver(): boolean {

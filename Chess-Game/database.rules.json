@@ -30,7 +30,12 @@
           }
         },
         "cardState": {
-          ".write": "auth != null && (root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid)"
+          "$color": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/players/' + $color + '/uid').val() === auth.uid",
+            "ready": {
+              ".write": "auth != null && root.child('rooms/' + $roomId + '/players/' + $color + '/uid').val() === auth.uid && (!data.exists() || data.val() !== true || newData.val() == true)"
+            }
+          }
         }
       }
     },

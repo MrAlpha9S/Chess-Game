@@ -24,11 +24,16 @@ import {
   createEmptyVariantState,
   createPhase1GridConfig,
   type Room,
+  type RoomMode,
   type RoomMove,
   type RoomPlayer,
   type RoomTimeControl,
   type TerminationReason,
 } from '../types/room';
+import { isValidDeck } from '../cards/catalog';
+
+/** How long the pre-match card selection stage lasts, in milliseconds. */
+export const CARD_SELECT_MS = 30_000;
 
 /** Convert the engine's outcome names to the RTDB room schema. */
 function toTerminationReason(outcome: Exclude<GameOutcome, 'ongoing'>): TerminationReason {
@@ -91,6 +96,7 @@ class RoomService {
   async createRoom(
     player: RoomPlayerIdentity,
     timeControl: RoomTimeControl = DEFAULT_TIME_CONTROL,
+    mode: RoomMode = 'classic',
   ): Promise<string> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const roomId = generateRoomCode();
@@ -103,7 +109,7 @@ class RoomService {
           createdAt: now,
           updatedAt: now,
           status: 'waiting',
-          mode: 'classic',
+          mode,
           winner: null,
           terminationReason: null,
           timeControl,
@@ -212,6 +218,12 @@ class RoomService {
       throw new Error('The room needs two players to start.');
     }
 
+    // Card mode enters the pre-match selection stage instead of the board.
+    if (room.metadata.mode === 'card') {
+      await this.enterCardSelect(roomId, hostUid);
+      return;
+    }
+
     const game = createInitialGameState();
     await update(this.roomRef(roomId), {
       boardState: {
@@ -223,6 +235,120 @@ class RoomService {
       'metadata/status': 'in_progress',
       'metadata/updatedAt': Date.now(),
     });
+  }
+
+  /**
+   * Enter the pre-match card selection stage (card mode only).
+   *
+   * The host moves the room from `waiting` to `card_select` and stamps the
+   * shared start time both clients count their 30 seconds from.
+   */
+  async enterCardSelect(roomId: string, hostUid: string): Promise<void> {
+    const room = await this.getRoom(roomId);
+    if (!room) throw new Error('This room does not exist.');
+    if (room.players.white?.uid !== hostUid) {
+      throw new Error('Only the host can start the game.');
+    }
+    if (!room.players.black) {
+      throw new Error('The room needs two players to start.');
+    }
+    if (room.metadata.mode !== 'card') {
+      throw new Error('Card selection is only for card mode rooms.');
+    }
+
+    await update(this.roomRef(roomId), {
+      'metadata/status': 'card_select',
+      'metadata/prepStartMs': Date.now(),
+      'metadata/updatedAt': Date.now(),
+    });
+  }
+
+  /**
+   * Store one side's selected cards and mark them ready, in a single patch.
+   *
+   * Each player may only touch their own side; the database rules also
+   * validate the deck contents. Re-readying after the opponent is already
+   * ready is rejected so a player cannot stall the transition.
+   */
+  async selectCards(
+    roomId: string,
+    playerUid: string,
+    cardIds: string[],
+  ): Promise<void> {
+    const room = await this.getRoom(roomId);
+    if (!room) throw new Error('This room does not exist.');
+    if (room.metadata.status !== 'card_select') {
+      throw new Error('The card selection stage has ended.');
+    }
+    const color = this.getPlayerColor(room, playerUid);
+    if (!color) throw new Error('You are not a player in this room.');
+    if (!isValidDeck(cardIds)) {
+      throw new Error('That card deck is not valid.');
+    }
+
+    const side = color === 'white' ? 'white' : 'black';
+    await update(this.roomRef(roomId), {
+      [`cardState/${side}/deck`]: cardIds,
+      [`cardState/${side}/ready`]: true,
+    });
+  }
+
+  /**
+   * Move the room into the game once both sides are ready, or when the
+   * selection timer has run out.
+   *
+   * Only the host runs this: writing the board state is host-only (the rules
+   * let the white player create the position), so the host is the one that
+   * observes the "both ready or deadline" condition and writes the transition.
+   * The guest simply waits for `in_progress`.
+   */
+  async commitCardSelect(roomId: string): Promise<void> {
+    const room = await this.getRoom(roomId);
+    if (!room) throw new Error('This room does not exist.');
+    if (room.metadata.status !== 'card_select') {
+      throw new Error('The card selection stage has ended.');
+    }
+
+    const white = room.cardState.white;
+    const black = room.cardState.black;
+    const whiteReady = white?.ready ?? false;
+    const blackReady = black?.ready ?? false;
+    const bothReady = whiteReady && blackReady;
+    const deadline = room.metadata.prepStartMs ?? 0;
+    const expired = deadline > 0 && Date.now() - deadline >= CARD_SELECT_MS;
+    if (!bothReady && !expired) {
+      throw new Error('Both players must be ready before the game starts.');
+    }
+
+    const game = createInitialGameState();
+    const patch: Record<string, unknown> = {
+      boardState: {
+        ...game,
+        lastMove: null,
+        gridConfig: createPhase1GridConfig(),
+        variantState: createEmptyVariantState(),
+      },
+      'metadata/status': 'in_progress',
+      'metadata/updatedAt': Date.now(),
+    };
+
+    // Note: when the deadline expired before both sides pressed ready, we
+    // still transition — the game proceeds with each side's selected deck
+    // (an empty deck is legal). The `ready` flags are a pre-match concern;
+    // they are not written here because each side's `cardState` is only
+    // writable by that side's owner, and the host cannot set the guest's flag.
+
+    try {
+      await update(this.roomRef(roomId), patch);
+    } catch {
+      // The board state write is host-only; if the caller is the guest and
+      // the race lost, the host (or the other client's retry) has already
+      // committed. Check the room instead of failing.
+      const now = await this.getRoom(roomId);
+      if (now?.metadata.status !== 'in_progress') {
+        throw new Error('Could not start the game.');
+      }
+    }
   }
 
   /**

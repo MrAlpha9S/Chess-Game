@@ -9,6 +9,7 @@ import { ResultScreen } from './features/result/ResultScreen';
 import { CreateRoomScreen } from './features/room/CreateRoomScreen';
 import { JoinRoomScreen } from './features/room/JoinRoomScreen';
 import { WaitingRoomScreen } from './features/room/WaitingRoomScreen';
+import { CardSelectScreen } from './features/room/CardSelectScreen';
 import { Loader2 } from 'lucide-react';
 
 /** Shown while the auth state is being restored. */
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/create-room" element={<ProtectedRoute><CreateRoomScreen /></ProtectedRoute>} />
       <Route path="/join-room" element={<ProtectedRoute><JoinRoomScreen /></ProtectedRoute>} />
       <Route path="/room/:roomId" element={<ProtectedRoute><WaitingRoomScreen /></ProtectedRoute>} />
+      <Route path="/card-select/:roomId" element={<ProtectedRoute><CardSelectScreen /></ProtectedRoute>} />
 
       {/* Game */}
       <Route path="/match/:roomId" element={<ProtectedRoute><MatchScreen /></ProtectedRoute>} />

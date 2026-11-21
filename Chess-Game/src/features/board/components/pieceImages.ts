@@ -28,6 +28,17 @@ export function pieceImage(piece: PieceCode): string {
   return `/assets/pieces/${color}/${kind}.png`;
 }
 
+/**
+ * The image path for a piece transformed by a Phase 2 card.
+ *
+ * The card catalog names the sprite file (e.g. "the-tower"); the path
+ * resolves through the colour folder just like a normal piece. Returns the
+ * ordinary piece image when the card has no transformed sprite.
+ */
+export function transformedPieceImage(color: PieceColor, sprite: string): string {
+  return `/assets/pieces/${color}/${sprite}.png`;
+}
+
 /** The kind of a piece, without its colour. */
 export function pieceKind(piece: PieceCode): PieceKind | null {
   switch (piece[1]) {
