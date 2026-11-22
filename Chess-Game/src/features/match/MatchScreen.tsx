@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { MoveLog } from '../../components/hud/MoveLog';
+import { CardPanel } from '../../components/hud/CardPanel';
+import { PlayerCardIcons } from '../../components/hud/PlayerCardIcons';
 import { LoadingAnimation } from '../../components/common/LoadingAnimation';
 import { useAuth } from '../../contexts/useAuth';
 import { useGameSync } from '../../hooks/useGameSync';
@@ -12,11 +14,14 @@ import { BoardGrid } from '../board/components/BoardGrid';
 import { playSound } from '../../lib/audio';
 import { roomService } from '../../services/roomService';
 import {
-  StandardEngine,
+  VariantEngine,
   gridToAlgebraic,
   type GridCoord,
+  type GridPair,
   type MoveRequest,
 } from '../../engine';
+import { toIdArray, type InGameCardId } from '../../services/cardLogic';
+import 'tippy.js/dist/tippy.css';
 import { Flag, Handshake, Crown, User, Wifi } from 'lucide-react';
 
 /**
@@ -77,12 +82,31 @@ export function MatchScreen() {
   const [showLog, setShowLog] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
 
+  // Card targeting: which card is being aimed and the squares picked so far.
+  const [targetingCard, setTargetingCard] = useState<InGameCardId | null>(null);
+  const [targetCells, setTargetCells] = useState<GridCoord[]>([]);
+  const [cardPending, setCardPending] = useState(false);
+
+  // The squares destroyed by card effects, kept as "row,col" keys.
+  const holes = useMemo(
+    () =>
+      toIdArray(room?.boardState?.gridConfig?.holes).filter(
+        (v) => typeof v === 'string' && v.includes(','),
+      ),
+    [room?.boardState?.gridConfig?.holes],
+  );
+
   const pointerFieldEnabled = useSettingsStore((state) => state.pointerFieldEnabled);
   usePointerField(boardRef, { maxTilt: 4, enabled: pointerFieldEnabled });
 
   const myClock = room?.players[myColor ?? 'white']?.timeRemainingMs ?? 0;
   const opponentClock =
     room?.players[myColor === 'white' ? 'black' : 'white']?.timeRemainingMs ?? 0;
+
+  // The card side each player sees next to their name: the local side is the
+  // one the user plays, the remote side is the opponent's.
+  const mySide = myColor ? room?.cardState?.[myColor] : undefined;
+  const opponentSide = myColor ? room?.cardState?.[myColor === 'white' ? 'black' : 'white'] : undefined;
 
   const onTimeUp = useCallback(() => {
     if (!identity) return;
@@ -118,6 +142,7 @@ export function MatchScreen() {
     if (!lastMoveKey) return;
     const move = room?.boardState?.lastMove;
     if (!move) return;
+    if (move.type === 'card') return;
     if (move.san.startsWith('O-O')) playSound('castle');
     else if (room?.boardState?.isCheck) playSound('check');
     else if (move.type === 'capture') playSound('capture');
@@ -147,16 +172,37 @@ export function MatchScreen() {
     (cell: GridCoord): GridCoord[] => {
       const boardState = room?.boardState;
       if (!boardState) return [];
-      const engine = new StandardEngine(boardState.fen);
+      // The variant engine respects the card effects (holes, transformed
+      // pieces, the active barrier) that the standard engine would ignore.
+      const effects = {
+        holes,
+        transformed: boardState.variantState?.transformed ?? {},
+        barrier: boardState.variantState?.barrier ?? null,
+      };
+      const engine = new VariantEngine(boardState.fen, effects);
       const algebraic = gridToAlgebraic(cell.row, cell.col);
-      return engine.getLegalGridMoves(algebraic);
+      const engineMoves = engine.getLegalGridMoves(algebraic);
+      return engineMoves.map(([row, col]) => ({ row, col }));
     },
-    [room?.boardState],
+    [room?.boardState, holes],
   );
 
   const handleCellClick = useCallback(
     async (row: number, col: number) => {
-      if (!isMyTurn || isGameOver) return;
+      if (!isMyTurn || isGameOver || cardPending) return;
+
+      // While targeting The Abyss, clicks only select empty non-hole squares.
+      if (targetingCard === 'abyss') {
+        const key = `${row},${col}`;
+        if (holes.includes(key) || board[row]?.[col]) return;
+        setTargetCells((previous) => {
+          const index = previous.findIndex((target) => target.row === row && target.col === col);
+          if (index >= 0) return previous.filter((_, i) => i !== index);
+          if (previous.length >= 3) return previous;
+          return [...previous, { row, col }];
+        });
+        return;
+      }
 
       const cell: GridCoord = { row, col };
       const piece = board[row]?.[col] ?? '';
@@ -209,8 +255,52 @@ export function MatchScreen() {
       positionFen,
       selectedCell,
       validMoves,
+      targetingCard,
+      cardPending,
+      holes,
     ],
   );
+
+  const handleStartTargeting = useCallback(
+    (cardId: InGameCardId) => {
+      setTargetingCard(cardId);
+      setTargetCells([]);
+      // A targeting click must not start from a piece selection.
+      setSelection({ fen: positionFen, cell: null, moves: [] });
+    },
+    [positionFen],
+  );
+
+  const handleCancelTargeting = useCallback(() => {
+    setTargetingCard(null);
+    setTargetCells([]);
+  }, []);
+
+  const handleConfirmAbyss = useCallback(async () => {
+    if (targetingCard !== 'abyss' || targetCells.length !== 3 || cardPending) return;
+    setCardPending(true);
+    const targets: GridPair[] = targetCells.map(({ row, col }) => [row, col]);
+    const ok = await actions.useCard('abyss', targets);
+    setCardPending(false);
+    if (ok) {
+      setTargetingCard(null);
+      setTargetCells([]);
+    }
+  }, [actions, targetingCard, targetCells, cardPending]);
+
+  // Leave targeting as soon as it stops being the local player's turn.
+  useEffect(() => {
+    if (!isMyTurn || isGameOver) {
+      setTargetingCard(null);
+      setTargetCells([]);
+    }
+  }, [isMyTurn, isGameOver]);
+
+  // A card that just landed (or an opponent-side event) changed the board:
+  // drop any still-picked target squares.
+  useEffect(() => {
+    setTargetCells([]);
+  }, [positionFen]);
 
   const handleResign = useCallback(async () => {
     if (!window.confirm('Are you sure you want to resign?')) return;
@@ -267,6 +357,7 @@ export function MatchScreen() {
               <p className="text-xs text-text-muted truncate max-w-28">
                 {opponent?.displayName ?? 'Waiting...'}
               </p>
+              <PlayerCardIcons side={opponentSide} compact />
               <p
                 className={`font-mono text-lg font-bold tabular-nums ${
                   opponentTimer.isVeryLow ? 'text-danger animate-pulse' : 'text-text'
@@ -288,9 +379,9 @@ export function MatchScreen() {
 
       {/* Main content */}
       <main className="flex-1 min-h-0 flex flex-col p-3">
-        <div className="flex-1 min-h-0 max-w-5xl w-full mx-auto flex gap-3">
+        <div className="flex-1 min-h-0 max-w-5xl w-full mx-auto flex flex-col md:flex-row gap-3">
           {/* Board */}
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="w-full md:flex-1 min-h-0 flex flex-col">
             <div
               className={`
                 shrink-0 text-center mb-2 py-1.5 rounded-lg text-sm font-medium
@@ -315,14 +406,29 @@ export function MatchScreen() {
                 selectedCell={selectedCell}
                 validMoves={validMoves}
                 lastMove={room.boardState?.lastMove ?? null}
-                isInteractive={isMyTurn && !isGameOver}
+                isInteractive={isMyTurn && !isGameOver && !cardPending}
                 isFlipped={isFlipped}
+                holes={holes}
+                targetCells={targetingCard === 'abyss' ? targetCells : []}
+                isTargeting={targetingCard === 'abyss'}
               />
             </div>
           </div>
 
           {/* Side panel */}
           <aside className="hidden md:flex w-56 shrink-0 flex-col gap-3">
+            <CardPanel
+              side={mySide}
+              isMyTurn={isMyTurn}
+              isGameOver={isGameOver}
+              fullMoveNumber={room.boardState?.fullMoveNumber ?? 1}
+              targetingCard={targetingCard}
+              targetCount={targetCells.length}
+              pending={cardPending}
+              onStartTargeting={handleStartTargeting}
+              onConfirm={() => void handleConfirmAbyss()}
+              onCancel={handleCancelTargeting}
+            />
             <div className="bg-surface border border-line rounded-lg p-3">
               <p className="text-xs text-text-muted mb-1">You play</p>
               <p className="font-medium">
@@ -366,6 +472,7 @@ export function MatchScreen() {
               <p className="text-xs text-text-muted truncate max-w-24">
                 {profile?.displayName ?? 'You'}
               </p>
+              <PlayerCardIcons side={mySide} compact />
               <p
                 className={`font-mono text-lg font-bold tabular-nums leading-none ${
                   myTimer.isVeryLow ? 'text-danger animate-pulse' : 'text-card-gold'
@@ -413,6 +520,23 @@ export function MatchScreen() {
             </Button>
           </div>
         </div>
+
+        {mySide && (
+          <div className="md:hidden max-w-5xl mx-auto mt-2">
+            <CardPanel
+              side={mySide}
+              isMyTurn={isMyTurn}
+              isGameOver={isGameOver}
+              fullMoveNumber={room.boardState?.fullMoveNumber ?? 1}
+              targetingCard={targetingCard}
+              targetCount={targetCells.length}
+              pending={cardPending}
+              onStartTargeting={handleStartTargeting}
+              onConfirm={() => void handleConfirmAbyss()}
+              onCancel={handleCancelTargeting}
+            />
+          </div>
+        )}
 
         {error && (
           <p className="max-w-5xl mx-auto mt-2 text-sm text-danger text-center">{error}</p>

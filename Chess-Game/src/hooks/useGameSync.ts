@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { roomService, type RoomPlayerIdentity } from '../services/roomService';
+import type { InGameCardId } from '../services/cardLogic';
 import {
   fenToGrid,
   gridToAlgebraic,
@@ -46,6 +47,8 @@ export interface GameActions {
   offerDraw: () => Promise<boolean>;
   /** Accept the opponent's draw offer. */
   acceptDraw: () => Promise<boolean>;
+  /** Use a card as a free action during the owner's turn. */
+  useCard: (cardId: InGameCardId, targets: [number, number][]) => Promise<boolean>;
   /** Store the remaining time on the clock. */
   syncClock: (timeRemainingMs: number) => Promise<void>;
   /** Clear the current error. */
@@ -165,6 +168,22 @@ export function useGameSync(roomId: string, currentUser: RoomPlayerIdentity | nu
     }
   }, [roomId, currentUser]);
 
+  const useCard = useCallback(
+    async (cardId: InGameCardId, targets: [number, number][]): Promise<boolean> => {
+      if (!roomId || !currentUser) return false;
+      setError(null);
+      try {
+        await roomService.useCard(roomId, currentUser.uid, cardId, targets);
+        return true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'The card could not be used.';
+        if (mountedRef.current) setError(message);
+        return false;
+      }
+    },
+    [roomId, currentUser],
+  );
+
   const syncClock = useCallback(
     async (timeRemainingMs: number): Promise<void> => {
       if (!roomId || !myColor) return;
@@ -195,6 +214,7 @@ export function useGameSync(roomId: string, currentUser: RoomPlayerIdentity | nu
     resign,
     offerDraw,
     acceptDraw,
+    useCard,
     syncClock,
     clearError,
   };

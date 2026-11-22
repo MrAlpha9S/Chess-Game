@@ -38,6 +38,11 @@ export interface CardDefinition {
    * exists. "tower" -> the-tower.png, "charmer" -> the-charmer.png.
    */
   transformedSprite?: string;
+  /**
+   * A card that applies at the pre-match selection stage instead of during
+   * the game. "redeployment" means the side may reorder its back rank.
+   */
+  prepEffect?: 'redeployment';
 }
 
 /** The six cards of the Phase 2 launch pool. */
@@ -83,6 +88,7 @@ export const CARD_CATALOG: readonly CardDefinition[] = [
     points: 2,
     description:
       'Sắp xếp lại 6 quân Xe, Mã, Tượng trên hàng sau theo ý muốn; Vua và Hậu giữ nguyên.',
+    prepEffect: 'redeployment',
   },
   {
     id: 'major-conflict',

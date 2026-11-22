@@ -1,0 +1,1 @@
+- [Stale lockfile workspaces](memory/lockfile-workspaces-stale.md) — stale `functions`/`packages` workspace entries are absent from the tracked project and should not be restored after dependency installs.

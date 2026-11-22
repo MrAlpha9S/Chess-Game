@@ -20,7 +20,7 @@
           }
         },
         "boardState": {
-          ".write": "auth != null && ((!data.exists() && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) || (data.child('turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid && newData.child('turn').val() === 'black') || (data.child('turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid && newData.child('turn').val() === 'white'))",
+          ".write": "auth != null && ((!data.exists() && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid) || (data.child('turn').val() === 'white' && root.child('rooms/' + $roomId + '/players/white/uid').val() === auth.uid && (newData.child('turn').val() === 'black' || (newData.child('lastMove/type').val() === 'card' && newData.child('turn').val() === 'white'))) || (data.child('turn').val() === 'black' && root.child('rooms/' + $roomId + '/players/black/uid').val() === auth.uid && (newData.child('turn').val() === 'white' || (newData.child('lastMove/type').val() === 'card' && newData.child('turn').val() === 'black'))))",
           ".validate": "!newData.exists() || (newData.hasChildren(['fen', 'turn']) && (newData.child('turn').val() === 'white' || newData.child('turn').val() === 'black') && newData.child('fen').isString())"
         },
         "moveHistory": {

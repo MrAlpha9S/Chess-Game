@@ -32,6 +32,8 @@ import { squareToGrid, type Coordinate } from './grid/coords';
 
 export * from './core/IChessEngine';
 export * from './core/StandardEngine';
+export * from './VariantEngine';
+export * from './deployment';
 export * from './grid/BoardGrid10x10';
 export * from './grid/board';
 export * from './grid/coords';

@@ -138,12 +138,16 @@ To ensure zero rewriting of the core engine when moving from Phase 1 to Phase 2:
         "white": {
           "deck": [],       // Max 3 card IDs
           "used": [],       // Used card IDs
-          "cooldowns": {}   // { "card_id": remaining_turns }
+          "cooldowns": {},  // { "card_id": remaining_turns }
+          "ready": false,   // Pressed Ready in the pre-match selection stage
+          "deployment": []  // Back-rank arrangement when the Redeployment card is picked
         },
         "black": {
           "deck": [],
           "used": [],
-          "cooldowns": {}
+          "cooldowns": {},
+          "ready": false,
+          "deployment": []
         }
       },
       "moveHistory": {
@@ -187,8 +191,12 @@ src/
 │   ├── core/
 │   │   ├── IChessEngine.ts        # Abstract Unified Game Engine Interface
 │   │   └── StandardEngine.ts      # Standard chessops Adapter (Phase 1 Engine)
+│   ├── VariantEngine.ts           # Phase 2 card-effect layer (holes, barriers, redeploy)
+│   ├── deployment.ts              # Redeployment prep effect (back-rank FEN builder)
 │   ├── index.ts             # Public engine API
-│   └── engine.test.ts       # Engine test suite
+│   ├── engine.test.ts       # Engine test suite
+│   ├── VariantEngine.test.ts      # Card-effect test suite
+│   └── deployment.test.ts        # Redeployment test suite
 ├── cards/                     # Phase 2 card data (no game logic)
 │   ├── catalog.ts            # The 6-card launch pool + deck validation
 │   └── catalog.test.ts       # Catalog and deck-validation tests
@@ -631,3 +639,26 @@ export function useGameSync(roomId: string, currentUserId: string) {
   return { engine, gameState, executeMove, error };
 }
 ```
+
+### 6.5 Phase 2 Variant Layer (`VariantEngine`)
+
+`src/engine/VariantEngine.ts` wraps a standard `chessops` position with the
+card-effect state that does not live in a FEN: holes (`gridConfig.holes`),
+transformed pieces and the Major Conflict box (`variantState`).
+
+Key behaviours:
+
+- **Holes** block landing squares for every piece; sliding pieces (rook,
+  bishop, queen) treat a hole on their path like a piece.
+- **The Abyss** destroys exactly three empty, non-promotion-rank squares and
+  requires the remaining 8x8 board to stay fully connected.
+- **Small Reinforcements** summon a knight or bishop onto an empty square of
+  the summoner's home half, written straight into the FEN.
+- **Redeployment** rearranges the six rook/knight/bishop slots of a side's
+  back rank at the start of the game; the king and queen stay in place and the
+  starting setup must be untouched.
+- **Major Conflict** (state only, in B1) traps non-royal pieces inside the
+  6x6 box; the royal is exempt.
+
+Because the effects are not in the FEN, restoring a game requires the FEN
+*and* the `variantState` / `gridConfig` sidecars together.

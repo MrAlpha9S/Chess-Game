@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { LoadingAnimation } from '../../components/common/LoadingAnimation';
+import { Piece } from '../board/components/Piece';
 import { useAuth } from '../../contexts/useAuth';
 import { roomService, CARD_SELECT_MS } from '../../services/roomService';
 import {
@@ -10,8 +11,23 @@ import {
   isValidDeck,
   type CardColor,
 } from '../../cards/catalog';
+import {
+  DEFAULT_ARRANGEMENT,
+  isValidArrangement,
+  type RearrangedRole,
+} from '../../engine/deployment';
 import type { Room } from '../../types/room';
 import { Check, Loader2, Sparkles, Timer, X } from 'lucide-react';
+
+/** The eight back-rank files, shown left to right. */
+const FILE_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
+
+/** The slot index (into the arrangement) of each rearrangeable file cell. */
+function slotIndexForCell(cell: number): number | null {
+  // Cells 0,1,2 are slots 0,1,2 (files a,b,c); cells 5,6,7 are slots 3,4,5
+  // (files f,g,h). Cells 3 and 4 hold the fixed queen and king.
+  return cell < 3 ? cell : cell >= 5 ? cell - 2 : null;
+}
 
 /**
  * The pre-match card selection stage.
@@ -32,8 +48,12 @@ export function CardSelectScreen() {
   const [myReady, setMyReady] = useState(false);
   const [error, setError] = useState('');
   const [now, setNow] = useState(() => Date.now());
+  const [deployment, setDeployment] = useState<RearrangedRole[]>([...DEFAULT_ARRANGEMENT]);
   const autoReadyRef = useRef(false);
   const committedRef = useRef(false);
+
+  /** Whether the Redeployment (bronze) card is in this side's deck. */
+  const hasRedeployment = selected.includes('redeployment');
 
   const myColor = useMemo(() => {
     if (!room || !user) return null;
@@ -54,7 +74,7 @@ export function CardSelectScreen() {
     ? Math.max(0, room.metadata.prepStartMs + CARD_SELECT_MS - now)
     : CARD_SELECT_MS;
 
-  // Submit this side's deck and mark it ready.
+  // Submit this side's deck, its Redeployment arrangement, and mark ready.
   const handleReady = useCallback(async () => {
     if (!user || myReady) return;
     setError('');
@@ -62,13 +82,36 @@ export function CardSelectScreen() {
       setError('You can only choose up to three different-color cards.');
       return;
     }
+    const wantsRedeployment = selected.includes('redeployment');
+    if (wantsRedeployment && !isValidArrangement(deployment)) {
+      setError('The back-rank arrangement must hold two rooks, two knights and two bishops.');
+      return;
+    }
     try {
-      await roomService.selectCards(roomId, user.uid, selected);
+      await roomService.selectCards(
+        roomId,
+        user.uid,
+        selected,
+        wantsRedeployment ? deployment : null,
+      );
       setMyReady(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not submit your cards.');
     }
-  }, [user, myReady, roomId, selected]);
+  }, [user, myReady, roomId, selected, deployment]);
+
+  // Swap the two pieces of the Redeployment arrangement at two slots.
+  const handleSwapSlots = useCallback(
+    (a: number, b: number) => {
+      if (myReady || a === b) return;
+      setDeployment((prev) => {
+        const next = [...prev];
+        [next[a], next[b]] = [next[b], next[a]];
+        return next;
+      });
+    },
+    [myReady],
+  );
 
   // Subscribe to the room so both players see each other's progress.
   useEffect(() => {
@@ -190,6 +233,15 @@ export function CardSelectScreen() {
           })}
         </div>
 
+        {hasRedeployment && (
+          <RedeploymentPanel
+            deployment={deployment}
+            onSwap={handleSwapSlots}
+            disabled={myReady}
+            color={myColor === 'black' ? 'b' : 'w'}
+          />
+        )}
+
         {error && <p className="text-danger text-sm text-center mb-4">{error}</p>}
 
         {/* Opponent status */}
@@ -220,6 +272,94 @@ export function CardSelectScreen() {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The Redeployment arrangement editor: the eight back-rank cells, with the
+ * fixed queen and king in the middle and the six outer slots swappable.
+ * Tapping two slots trades their pieces; the multiset stays two of each.
+ *
+ * The pieces render as the board's own sprites, in the color the local
+ * player will command, so the arrangement reads exactly like the board.
+ */
+function RedeploymentPanel({
+  deployment,
+  onSwap,
+  disabled,
+  color,
+}: {
+  deployment: RearrangedRole[];
+  onSwap: (a: number, b: number) => void;
+  disabled: boolean;
+  /** The color of the local player's pieces, as a piece-code prefix. */
+  color: 'w' | 'b';
+}) {
+  const [first, setFirst] = useState<number | null>(null);
+
+  const handleCellTap = (cell: number) => {
+    if (disabled) return;
+    const slot = slotIndexForCell(cell);
+    if (slot === null) return; // the fixed queen/king cells
+    if (first === null) {
+      setFirst(slot);
+      return;
+    }
+    if (first === slot) {
+      setFirst(null);
+      return;
+    }
+    onSwap(first, slot);
+    setFirst(null);
+  };
+
+  /** The piece code rendered in a given cell. */
+  const cellPiece = (cell: number): string => {
+    const c = color;
+    if (cell === 3) return `${c}q`; // fixed queen on d
+    if (cell === 4) return `${c}k`; // fixed king on e
+    const slot = slotIndexForCell(cell)!;
+    return `${c}${deployment[slot] === 'rook' ? 'r' : deployment[slot] === 'knight' ? 'n' : 'b'}`;
+  };
+
+  return (
+    <div className="mb-6 rounded-lg border border-card-bronze/40 bg-card-bronze/5 p-3">
+      <p className="text-xs font-medium text-card-bronze mb-2">
+        Back-rank arrangement
+      </p>
+      <div className="grid grid-cols-8 gap-1">
+        {FILE_LETTERS.map((file, cell) => {
+          const slot = slotIndexForCell(cell);
+          const fixed = slot === null;
+          const isPicked = first !== null && slot === first;
+          return (
+            <button
+              key={file}
+              disabled={disabled || fixed}
+              onClick={() => handleCellTap(cell)}
+              className={`
+                relative aspect-square rounded overflow-hidden transition-colors
+                ${fixed
+                  ? 'bg-surface-raised cursor-not-allowed'
+                  : isPicked
+                    ? 'bg-card-bronze/40 ring-2 ring-card-bronze ring-inset'
+                    : 'bg-square-light hover:bg-square-dark'
+                }
+              `}
+              aria-label={`file ${file}`}
+            >
+              <Piece piece={cellPiece(cell)} />
+              <span className="absolute bottom-0 inset-x-0 bg-black/40 text-[9px] font-mono text-white/80 text-center leading-3">
+                {file}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-text-muted mt-2">
+        Tap two pieces to swap them. The queen and king stay put.
+      </p>
     </div>
   );
 }

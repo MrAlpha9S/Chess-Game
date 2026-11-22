@@ -30,7 +30,21 @@ import {
   type RoomTimeControl,
   type TerminationReason,
 } from '../types/room';
-import { isValidDeck } from '../cards/catalog';
+import { getCard, isValidDeck } from '../cards/catalog';
+import {
+  buildPrepFen,
+  isValidArrangement,
+  normalizeArrangement,
+  type RearrangedRole,
+} from '../engine/deployment';
+import { VariantEngine } from '../engine/VariantEngine';
+import {
+  ABYSS_COOLDOWN_TURNS,
+  cardUnavailableReason,
+  tickCooldowns,
+  toIdArray,
+  type InGameCardId,
+} from './cardLogic';
 
 /** How long the pre-match card selection stage lasts, in milliseconds. */
 export const CARD_SELECT_MS = 30_000;
@@ -264,7 +278,8 @@ class RoomService {
   }
 
   /**
-   * Store one side's selected cards and mark them ready, in a single patch.
+   * Store one side's selected cards (and its Redeployment arrangement, when
+   * the bronze card is in the deck) and mark them ready, in a single patch.
    *
    * Each player may only touch their own side; the database rules also
    * validate the deck contents. Re-readying after the opponent is already
@@ -274,6 +289,7 @@ class RoomService {
     roomId: string,
     playerUid: string,
     cardIds: string[],
+    deployment: readonly RearrangedRole[] | null = null,
   ): Promise<void> {
     const room = await this.getRoom(roomId);
     if (!room) throw new Error('This room does not exist.');
@@ -286,10 +302,23 @@ class RoomService {
       throw new Error('That card deck is not valid.');
     }
 
-    const side = color === 'white' ? 'white' : 'black';
+    // The arrangement only matters when the Redeployment card is chosen.
+    const hasRedeployment = cardIds.some(
+      (id) => getCard(id)?.prepEffect === 'redeployment',
+    );
+    // The arrangement only matters when the Redeployment card is chosen; a
+    // null clears any stale value left from an earlier selection.
+    let deploymentPayload: readonly RearrangedRole[] | null = null;
+    if (hasRedeployment) {
+      if (deployment === null || !isValidArrangement(deployment)) {
+        throw new Error('The back-rank arrangement is not valid.');
+      }
+      deploymentPayload = deployment;
+    }
     await update(this.roomRef(roomId), {
-      [`cardState/${side}/deck`]: cardIds,
-      [`cardState/${side}/ready`]: true,
+      [`cardState/${color}/deck`]: cardIds,
+      [`cardState/${color}/deployment`]: deploymentPayload ? [...deploymentPayload] : null,
+      [`cardState/${color}/ready`]: true,
     });
   }
 
@@ -320,7 +349,30 @@ class RoomService {
       throw new Error('Both players must be ready before the game starts.');
     }
 
-    const game = createInitialGameState();
+    // Redeployment is a prep effect: a side that chose the card reorders its
+    // back rank, so the starting position is built from both sides' choices
+    // instead of the standard setup. RTDB drops empty arrays on write, so a
+    // side that never picked a card reads back no `deck` at all.
+    const whiteDeck = white?.deck ?? [];
+    const blackDeck = black?.deck ?? [];
+    const whiteHasRedep = whiteDeck.some(
+      (id) => getCard(id)?.prepEffect === 'redeployment',
+    );
+    const blackHasRedep = blackDeck.some(
+      (id) => getCard(id)?.prepEffect === 'redeployment',
+    );
+    const whiteDeployment = whiteHasRedep ? normalizeArrangement(white?.deployment) : null;
+    const blackDeployment = blackHasRedep ? normalizeArrangement(black?.deployment) : null;
+    const startingFen = buildPrepFen(
+      whiteHasRedep ? whiteDeployment : null,
+      blackHasRedep ? blackDeployment : null,
+    );
+    // Derive the game state from the (possibly reordered) starting position.
+    const game =
+      startingFen === createInitialGameState().fen
+        ? createInitialGameState()
+        : gameStateFromFen(startingFen);
+
     const patch: Record<string, unknown> = {
       boardState: {
         ...game,
@@ -420,6 +472,8 @@ class RoomService {
           },
           hiddenPieces: room.boardState.variantState?.hiddenPieces ?? {},
           activeBarriers: room.boardState.variantState?.activeBarriers ?? [],
+          transformed: room.boardState.variantState?.transformed ?? {},
+          barrier: room.boardState.variantState?.barrier ?? null,
         },
       },
       [`moveHistory/${moveNumber}`]: move,
@@ -442,8 +496,82 @@ class RoomService {
       patch[`players/${color}/timeRemainingMs`] = next;
     }
 
+    // A normal move consumes one of the player's turns, so tick each of their
+    // in-deck card cooldowns in the same atomic patch. Card actions themselves
+    // are free and do not tick this counter.
+    const cooldownsAfterMove = tickCooldowns(room.cardState?.[color]);
+    for (const [cardId, remaining] of Object.entries(cooldownsAfterMove)) {
+      patch[`cardState/${color}/cooldowns/${cardId}`] = remaining;
+    }
+
     await update(this.roomRef(roomId), patch);
 
+    return move;
+  }
+
+  /**
+   * Use a card as a free action during the owner's turn. The Abyss currently
+   * creates three holes and starts its per-player 15-turn cooldown; the turn
+   * and clock remain unchanged.
+   */
+  async useCard(
+    roomId: string,
+    playerUid: string,
+    cardId: InGameCardId,
+    targets: [number, number][],
+  ): Promise<RoomMove> {
+    const room = await this.getRoom(roomId);
+    if (!room) throw new Error('This room does not exist.');
+    if (!room.boardState) throw new Error('The game has not started yet.');
+    const color = this.getPlayerColor(room, playerUid);
+    if (!color) throw new Error('You are not a player in this room.');
+    const reason = cardUnavailableReason(room, color, cardId);
+    if (reason) throw new Error(reason);
+
+    const currentHoles = toIdArray(room.boardState.gridConfig?.holes);
+    const effects = {
+      holes: currentHoles,
+      transformed: room.boardState.variantState?.transformed ?? {},
+      barrier: room.boardState.variantState?.barrier ?? null,
+    };
+    const engine = new VariantEngine(room.boardState.fen, effects);
+    const result = engine.applyAbyss(targets);
+    if (!result.ok) throw new Error(result.reason);
+
+    const timestamp = Date.now();
+    const move: RoomMove = {
+      from: '',
+      to: '',
+      san: 'The Abyss',
+      type: 'card',
+      cardId,
+      by: playerUid,
+      timestamp,
+    };
+    const moveNumber = Object.keys(room.moveHistory ?? {}).length;
+    const existingCooldowns = room.cardState?.[color]?.cooldowns ?? {};
+    const cooldowns = {
+      ...existingCooldowns,
+      [cardId]: ABYSS_COOLDOWN_TURNS,
+    };
+
+    // This is intentionally a free action: leave the turn, FEN and clocks
+    // intact while atomically updating the holes, card cooldown, and history.
+    const patch: Record<string, unknown> = {
+      'boardState/gridConfig': {
+        minRow: room.boardState.gridConfig?.minRow ?? createPhase1GridConfig().minRow,
+        maxRow: room.boardState.gridConfig?.maxRow ?? createPhase1GridConfig().maxRow,
+        minCol: room.boardState.gridConfig?.minCol ?? createPhase1GridConfig().minCol,
+        maxCol: room.boardState.gridConfig?.maxCol ?? createPhase1GridConfig().maxCol,
+        holes: result.effects.holes,
+      },
+      'boardState/lastMove': move,
+      [`cardState/${color}/cooldowns`]: cooldowns,
+      [`moveHistory/${moveNumber}`]: move,
+      'metadata/updatedAt': timestamp,
+    };
+
+    await update(this.roomRef(roomId), patch);
     return move;
   }
 

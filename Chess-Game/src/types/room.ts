@@ -12,6 +12,7 @@ import {
   ACTIVE_MIN_COL,
   ACTIVE_MIN_ROW,
 } from '../engine/grid/constants';
+import type { RearrangedRole } from '../engine/deployment';
 
 /** The lifecycle of a room. */
 export type RoomStatus = 'waiting' | 'card_select' | 'in_progress' | 'completed';
@@ -92,7 +93,9 @@ export interface RoomMove {
   /** The move in Standard Algebraic Notation. */
   san: string;
   /** Whether the move was a capture. */
-  type: 'move' | 'capture';
+  type: 'move' | 'capture' | 'card';
+  /** The card id, when the action was a card use. */
+  cardId?: string;
   /** The promotion piece, when the move was a promotion. */
   promotion?: string;
   /** The uid of the player who made the move. */
@@ -115,6 +118,24 @@ export interface GridConfig {
   holes: string[];
 }
 
+/** A piece transformed by a Phase 2 card, e.g. a rook turned into The Tower. */
+export interface TransformedPiece {
+  /** The card id that transformed the piece. */
+  cardId: string;
+  /** The color of the transformed piece. */
+  color: 'white' | 'black';
+}
+
+/** The 6x6 Major Conflict box, when one is active. */
+export interface BarrierState {
+  /** Top-left grid corner and edge size: [row, col, size, size]. */
+  box: [number, number, number, number];
+  /** The player who cast the barrier. */
+  owner: 'white' | 'black';
+  /** Full moves of the owner remaining until the box dissolves (max 10). */
+  turnsLeft: number;
+}
+
 /** Variant-specific state, reserved for Phase 2. */
 export interface VariantState {
   /** The square holding each side's royal piece. */
@@ -123,6 +144,10 @@ export interface VariantState {
   hiddenPieces: Record<string, { row: number; col: number }>;
   /** The active board restrictions, as "row,col" ranges. */
   activeBarriers: string[];
+  /** Transformed pieces, keyed by algebraic square (e.g. "a1"). */
+  transformed: Record<string, TransformedPiece>;
+  /** The active Major Conflict box, or null when none. */
+  barrier: BarrierState | null;
 }
 
 /** The board position of a room. */
@@ -157,6 +182,11 @@ export interface RoomCardSide {
   cooldowns: Record<string, number>;
   /** Whether the player pressed Ready in the pre-match selection stage. */
   ready: boolean;
+  /**
+   * The back-rank arrangement chosen with the Redeployment card, in file
+   * order a,b,c,f,g,h. Absent when the card was not selected.
+   */
+  deployment?: RearrangedRole[];
 }
 
 /** The card containers of a room, reserved for Phase 2. */
@@ -210,5 +240,11 @@ export function createPhase1GridConfig(): GridConfig {
 
 /** The empty variant state both games start with. */
 export function createEmptyVariantState(): VariantState {
-  return { royalTag: { white: null, black: null }, hiddenPieces: {}, activeBarriers: [] };
+  return {
+    royalTag: { white: null, black: null },
+    hiddenPieces: {},
+    activeBarriers: [],
+    transformed: {},
+    barrier: null,
+  };
 }
