@@ -353,11 +353,11 @@ export function MatchScreen() {
           </div>
 
           <div className="flex items-center gap-3">
+            <PlayerCardIcons side={opponentSide} compact />
             <div className="text-right">
               <p className="text-xs text-text-muted truncate max-w-28">
                 {opponent?.displayName ?? 'Waiting...'}
               </p>
-              <PlayerCardIcons side={opponentSide} compact />
               <p
                 className={`font-mono text-lg font-bold tabular-nums ${
                   opponentTimer.isVeryLow ? 'text-danger animate-pulse' : 'text-text'
@@ -381,7 +381,7 @@ export function MatchScreen() {
       <main className="flex-1 min-h-0 flex flex-col p-3">
         <div className="flex-1 min-h-0 max-w-5xl w-full mx-auto flex flex-col md:flex-row gap-3">
           {/* Board */}
-          <div className="w-full md:flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 w-full min-h-0 flex flex-col">
             <div
               className={`
                 shrink-0 text-center mb-2 py-1.5 rounded-lg text-sm font-medium
@@ -472,7 +472,6 @@ export function MatchScreen() {
               <p className="text-xs text-text-muted truncate max-w-24">
                 {profile?.displayName ?? 'You'}
               </p>
-              <PlayerCardIcons side={mySide} compact />
               <p
                 className={`font-mono text-lg font-bold tabular-nums leading-none ${
                   myTimer.isVeryLow ? 'text-danger animate-pulse' : 'text-card-gold'
@@ -481,6 +480,7 @@ export function MatchScreen() {
                 {formatTime(myTimer.remainingMs)}
               </p>
             </div>
+            <PlayerCardIcons side={mySide} compact />
           </div>
 
           <div className="flex items-center gap-2">
